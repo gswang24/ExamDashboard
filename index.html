@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.9 (絲滑視角切換版)</title>
+    <title>監考儀表板 v9.10 (時間輸入優化版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -181,22 +181,32 @@
         .subject-header { display: flex; justify-content: space-between; align-items: center; }
         .subject-input { font-size: 1.4rem; font-weight: 800; border: none; outline: none; background: transparent; width: 80%; color: var(--c-grey); }
         .time-inputs { display: flex; align-items: center; gap: 5px; }
-        .time-input { border: 1px solid #ddd; border-radius: 4px; padding: 4px; font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; color: var(--c-grey); background: #f9f9f9; font-family: 'Courier New', monospace; letter-spacing: 1px; }
+        
+        /* 時間輸入框 */
+        .time-input { 
+            border: 1px solid #ddd; border-radius: 4px; padding: 4px; 
+            font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; 
+            color: var(--c-grey); background: #f9f9f9; 
+            font-family: 'Courier New', monospace; letter-spacing: 1px;
+            cursor: text;
+        }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
-        /* --- 出勤卡 --- */
+        /* --- 出勤卡 (靠右對齊版) --- */
         .attendance-card { 
             background-color: var(--c-red); border: 2px solid var(--c-grey);
             border-radius: 16px; 
             height: 180px; 
-            min-height: 60px; /* 最小高度 */
+            min-height: 60px; 
             flex-shrink: 0; display: flex; overflow: hidden; 
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             padding: 5px; gap: 5px; transition: height 0.1s;
         }
         .att-box { 
             flex: 1; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; padding: 4px;
+            /* 靠右對齊 */
+            align-items: flex-end; 
+            justify-content: center; padding: 4px;
             background: rgba(255, 255, 255, 0.95); border-radius: 10px;
             border: 1px solid rgba(0,0,0,0.1);
             gap: 0; 
@@ -205,14 +215,16 @@
         
         .att-label { 
             font-size: 1.2rem; font-weight: 900; 
-            width: 100%; text-align: center; color: var(--c-grey); 
+            width: 100%; text-align: right; /* 文字靠右 */
+            color: var(--c-grey); 
             transition: font-size 0.2s, margin 0.2s; 
             margin-bottom: 2px;
             line-height: 1.1; 
         }
         .att-val { 
             font-size: 3.5rem; font-weight: 800; 
-            background: transparent; border: none; text-align: center; 
+            background: transparent; border: none; 
+            text-align: right; /* 數字靠右 */
             width: 100%; outline: none; color: var(--c-grey); 
             padding: 0; margin: 0; 
             transition: font-size 0.2s;
@@ -342,7 +354,6 @@
         .seat-highlight { background-color: var(--c-teal) !important; color: #fff; }
         .seat-highlight .seat-num { background-color: #fff; color: var(--c-teal); }
 
-        /* V9.9: 講臺動畫名稱 (講臺飛移) */
         .podium {
             width: 180px; 
             height: 40px; 
@@ -415,9 +426,9 @@
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
-                        <input type="text" class="time-input time-start" value="13:20" maxlength="5" placeholder="13:20" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-start" value="13:20" maxlength="5" placeholder="13:20" onfocus="this.select()" onblur="formatTimeInput(this)">
                         <span class="time-sep">~</span>
-                        <input type="text" class="time-input time-end" value="14:10" maxlength="5" placeholder="14:10" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-end" value="14:10" maxlength="5" placeholder="14:10" onfocus="this.select()" onblur="formatTimeInput(this)">
                     </div>
                 </div>
                 <div class="subject-item">
@@ -426,9 +437,9 @@
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
-                        <input type="text" class="time-input time-start" value="14:20" maxlength="5" placeholder="HH:mm" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-start" value="14:20" maxlength="5" placeholder="HH:mm" onfocus="this.select()" onblur="formatTimeInput(this)">
                         <span class="time-sep">~</span>
-                        <input type="text" class="time-input time-end" value="15:10" maxlength="5" placeholder="HH:mm" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-end" value="15:10" maxlength="5" placeholder="HH:mm" onfocus="this.select()" onblur="formatTimeInput(this)">
                     </div>
                 </div>
                 
@@ -538,19 +549,17 @@
             }, 600);
         }
 
-        // --- 視角切換 (V9.9: 使用 View Transition API) ---
+        // --- 視角切換 (V9.9 View Transition) ---
         const viewToggle = document.getElementById('viewToggle');
         const seatingContainer = document.getElementById('seatingContainer');
 
         function setView(isStudent) {
-            // V9.9: 這裡使用 startViewTransition 來創造絲滑效果
             if (document.startViewTransition) {
                 document.startViewTransition(() => {
                     viewToggle.checked = isStudent;
                     triggerViewChange();
                 });
             } else {
-                // 回退方案：如果不支援 View Transition，直接切換
                 viewToggle.checked = isStudent;
                 triggerViewChange();
             }
@@ -623,7 +632,7 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- 自適應 ResizeObserver (Header & AttendanceCard) ---
+        // --- 自適應 ResizeObserver ---
         const headerRow = document.getElementById('headerRow');
         const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
@@ -759,7 +768,7 @@
         // --- Subject/Seat Functions ---
         function addSubject(){
             const d=document.createElement('div'); d.className='subject-item';
-            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onblur="formatTimeInput(this)"></div>`;
+            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
         }
         function removeSubject(b){ 
@@ -797,11 +806,9 @@
             let max=6; cols.forEach(x=>max=Math.max(max, x.querySelectorAll('.seat-box').length));
             const div=document.createElement('div'); div.className='seat-column';
             for(let i=0;i<max;i++){ const s=createSeat('',''); convertToEmpty(s); div.appendChild(s); }
-            const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${c.children.length+1}排`; div.appendChild(inp);
-            
-            // V9.9: 為新產生的標籤設定 view-transition-name 以便平滑移動
+            const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${c.children.length+1}排`; 
             inp.style.viewTransitionName = `col-label-${c.children.length}`;
-            
+            div.appendChild(inp);
             c.appendChild(div);
         }
         window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM();} }
@@ -842,9 +849,7 @@
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
                 const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${i+1}排`; 
-                // V9.9: 綁定 view-transition-name
                 inp.style.viewTransitionName = `col-label-${i+1}`;
-                
                 col.appendChild(inp);
                 c.appendChild(col);
             }
