@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.7 (自適應修復版)</title>
+    <title>監考儀表板 v9.8 (座位完全自適應版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -141,7 +141,7 @@
         .status-card.urgent .status-time { color: var(--c-red); }
         .progress-bg { position: absolute; left: 0; bottom: 0; top: 0; width: 0%; background-color: rgba(243, 223, 162, 0.5); transition: width 1s linear; z-index: 1; }
 
-        /* 自適應緊湊模式 (Header) - 這些 class 由 JS 觸發 */
+        /* 自適應緊湊模式 (Header) */
         .header-row.compact .clock-card, .header-row.compact .status-card { padding: 4px; }
         .header-row.compact .clock-label { font-size: 1.2rem; margin-bottom: 2px; }
         .header-row.compact .clock-date { font-size: 0.9rem; margin-bottom: 4px; display: none; }
@@ -188,12 +188,11 @@
         .attendance-card { 
             background-color: var(--c-red); border: 2px solid var(--c-grey);
             border-radius: 16px; 
-            height: 180px; /* 預設高度 */
-            min-height: 60px; /* 最小高度保護 */
+            height: 180px; 
+            min-height: 60px; /* 最小高度 */
             flex-shrink: 0; display: flex; overflow: hidden; 
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
-            padding: 5px; gap: 5px; 
-            transition: height 0.1s; /* 滑順過渡 */
+            padding: 5px; gap: 5px; transition: height 0.1s;
         }
         .att-box { 
             flex: 1; display: flex; flex-direction: column; 
@@ -224,7 +223,7 @@
         .att-label-long { font-size: 1.0rem; white-space: nowrap; }
         textarea.att-val { resize: none; height: 100%; font-size: 1.1rem; line-height: 1.4; border: 2px dashed #ccc; border-radius: 8px; transition: height 0.2s; }
         
-        /* 出勤卡緊湊模式 (.compact) - 當高度變小時觸發 */
+        /* 出勤卡緊湊模式 */
         .attendance-card.compact .att-box { padding: 2px; }
         .attendance-card.compact .att-label { font-size: 0.9rem; margin-bottom: 0; }
         .attendance-card.compact .att-val { font-size: 1.8rem; }
@@ -273,10 +272,11 @@
         .classroom-layout {
             flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; 
             justify-content: center; 
-            align-items: stretch; 
+            align-items: stretch; /* 確保直向填滿 */
             gap: 5px; 
             padding-bottom: 5px;
-            overflow: auto; width: 100%;
+            overflow: auto; /* 保留捲軸機制以防萬一，但依賴下方 flex 壓縮 */
+            width: 100%;
             -webkit-overflow-scrolling: touch;
             transition: padding 0.3s;
             order: 1; 
@@ -308,7 +308,9 @@
         .seat-box {
             width: 100%; 
             flex: 1 1 0%; 
-            min-height: 55px;
+            /* v9.8 修正：將最小高度設為 0，允許無限壓縮以適應視窗高度 */
+            min-height: 0; 
+            
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
             position: relative; box-sizing: border-box; cursor: grab;
             transition: transform 0.1s; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
@@ -327,7 +329,8 @@
         .seat-name { 
             flex: 1; 
             display: flex; align-items: center; justify-content: center; 
-            font-size: clamp(1rem, min(24cqw, 50cqh), 3.5rem); 
+            /* v9.8 修正：稍微縮小最小字體限制，確保小視窗下能顯示 */
+            font-size: clamp(0.8rem, min(24cqw, 50cqh), 3.5rem); 
             font-weight: bold; 
             white-space: nowrap; 
             overflow: hidden; 
@@ -604,7 +607,7 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- 自適應 ResizeObserver (修復版) ---
+        // --- 自適應 ResizeObserver (Header & AttendanceCard) ---
         const headerRow = document.getElementById('headerRow');
         const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
