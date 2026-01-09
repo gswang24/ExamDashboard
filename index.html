@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.8 (座位完全自適應版)</title>
+    <title>監考儀表板 v9.9 (絲滑視角切換版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -272,11 +272,10 @@
         .classroom-layout {
             flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; 
             justify-content: center; 
-            align-items: stretch; /* 確保直向填滿 */
+            align-items: stretch; 
             gap: 5px; 
             padding-bottom: 5px;
-            overflow: auto; /* 保留捲軸機制以防萬一，但依賴下方 flex 壓縮 */
-            width: 100%;
+            overflow: auto; width: 100%;
             -webkit-overflow-scrolling: touch;
             transition: padding 0.3s;
             order: 1; 
@@ -308,7 +307,6 @@
         .seat-box {
             width: 100%; 
             flex: 1 1 0%; 
-            /* v9.8 修正：將最小高度設為 0，允許無限壓縮以適應視窗高度 */
             min-height: 0; 
             
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
@@ -329,7 +327,6 @@
         .seat-name { 
             flex: 1; 
             display: flex; align-items: center; justify-content: center; 
-            /* v9.8 修正：稍微縮小最小字體限制，確保小視窗下能顯示 */
             font-size: clamp(0.8rem, min(24cqw, 50cqh), 3.5rem); 
             font-weight: bold; 
             white-space: nowrap; 
@@ -345,6 +342,7 @@
         .seat-highlight { background-color: var(--c-teal) !important; color: #fff; }
         .seat-highlight .seat-num { background-color: #fff; color: var(--c-teal); }
 
+        /* V9.9: 講臺動畫名稱 (講臺飛移) */
         .podium {
             width: 180px; 
             height: 40px; 
@@ -358,6 +356,7 @@
             transition: all 0.3s;
             order: 2; 
             z-index: 10;
+            view-transition-name: podium;
         }
 
         .seating-container.student-view .podium {
@@ -539,16 +538,33 @@
             }, 600);
         }
 
-        // --- 視角切換 ---
+        // --- 視角切換 (V9.9: 使用 View Transition API) ---
         const viewToggle = document.getElementById('viewToggle');
         const seatingContainer = document.getElementById('seatingContainer');
 
         function setView(isStudent) {
-            viewToggle.checked = isStudent;
-            triggerViewChange();
+            // V9.9: 這裡使用 startViewTransition 來創造絲滑效果
+            if (document.startViewTransition) {
+                document.startViewTransition(() => {
+                    viewToggle.checked = isStudent;
+                    triggerViewChange();
+                });
+            } else {
+                // 回退方案：如果不支援 View Transition，直接切換
+                viewToggle.checked = isStudent;
+                triggerViewChange();
+            }
         }
 
-        viewToggle.addEventListener('change', triggerViewChange);
+        viewToggle.addEventListener('change', () => {
+            if (document.startViewTransition) {
+                document.startViewTransition(() => {
+                    triggerViewChange();
+                });
+            } else {
+                triggerViewChange();
+            }
+        });
 
         function triggerViewChange() {
             if (viewToggle.checked) {
@@ -782,6 +798,10 @@
             const div=document.createElement('div'); div.className='seat-column';
             for(let i=0;i<max;i++){ const s=createSeat('',''); convertToEmpty(s); div.appendChild(s); }
             const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${c.children.length+1}排`; div.appendChild(inp);
+            
+            // V9.9: 為新產生的標籤設定 view-transition-name 以便平滑移動
+            inp.style.viewTransitionName = `col-label-${c.children.length}`;
+            
             c.appendChild(div);
         }
         window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM();} }
@@ -821,7 +841,11 @@
                     if(idx<pool.length){ const p=pool[idx++]; col.appendChild(createSeat(p.id,p.name)); }
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
-                const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${i+1}排`; col.appendChild(inp);
+                const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${i+1}排`; 
+                // V9.9: 綁定 view-transition-name
+                inp.style.viewTransitionName = `col-label-${i+1}`;
+                
+                col.appendChild(inp);
                 c.appendChild(col);
             }
         }
