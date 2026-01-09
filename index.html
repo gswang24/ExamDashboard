@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.16 (180度旋轉版)</title>
+    <title>監考儀表板 v9.17 (無動畫倒序版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -17,12 +17,12 @@
             --gap-size: 16px;
         }
 
-        /* 視角切換動畫 (0.8s) */
+        /* 移除 View Transition 動畫 */
         ::view-transition-group(*),
         ::view-transition-old(*),
         ::view-transition-new(*) {
-            animation-duration: 0.8s !important;
-            animation-timing-function: ease-in-out;
+            animation: none !important;
+            transition: none !important;
         }
 
         *, *::before, *::after {
@@ -288,11 +288,9 @@
             padding-bottom: 5px;
             overflow: auto; width: 100%;
             -webkit-overflow-scrolling: touch;
-            transition: padding 0.3s;
+            transition: none; /* No Animation */
             order: 1; 
         }
-
-        /* V9.16: 左起/右起不再使用 row-reverse，改由 JS 替換文字 */
         
         .seat-column { 
             display: flex; flex-direction: column; gap: 5px; align-items: center; 
@@ -308,7 +306,7 @@
             order: 999; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             flex-shrink: 0;
-            pointer-events: none; /* 防止使用者手動修改，改由 JS 控制 */
+            pointer-events: none; 
         }
 
         .seating-container.student-view .col-label-input {
@@ -324,7 +322,8 @@
             
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
             position: relative; box-sizing: border-box; cursor: grab;
-            transition: transform 0.1s; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
+            transition: none; /* No Animation */
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
             overflow: hidden; touch-action: none; 
 
             container-type: size;
@@ -365,10 +364,9 @@
             box-shadow: 4px 4px 0px rgba(0,0,0,0.1); border-radius: 8px;
             margin: 5px 0; 
             align-self: center; 
-            transition: all 0.3s;
+            transition: none; /* No Animation */
             order: 2; 
             z-index: 10;
-            view-transition-name: podium;
         }
 
         /* 學生視角：講臺移到上方 */
@@ -569,26 +567,18 @@
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
-            if (document.startViewTransition) {
-                document.startViewTransition(() => triggerViewChange());
-            } else {
-                triggerViewChange();
-            }
+            // 直接執行切換，不使用動畫
+            triggerViewChange();
         }
 
         function setDirection(isRight) {
             if (dirToggle.checked === isRight) return;
             dirToggle.checked = isRight;
-            // 這裡不需要 View Transition，因為只有換文字
             updateColumnLabels();
         }
 
         viewToggle.addEventListener('change', () => {
-            if (document.startViewTransition) {
-                document.startViewTransition(() => triggerViewChange());
-            } else {
-                triggerViewChange();
-            }
+            triggerViewChange();
         });
 
         dirToggle.addEventListener('change', () => {
@@ -618,18 +608,14 @@
         }
 
         // Helper: 180度旋轉 (點對稱)
-        // 方法：反轉 Columns 順序 + 反轉每個 Column 內部的 Seats 順序
         function rotateGrid180(grid) {
             if (!grid.length) return [];
-            
             // 1. 複製並反轉 Column 順序
             const newGrid = [...grid].reverse();
-            
             // 2. 反轉每個 Column 內的 Seats
             newGrid.forEach(col => {
                 col.seats = col.seats.reverse();
             });
-
             return newGrid;
         }
 
@@ -653,14 +639,13 @@
                     }
                 });
                 
-                // 加入標籤輸入框 (文字之後會由 updateColumnLabels 統一設定)
+                // 加入標籤輸入框
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
                 div.appendChild(inp);
                 container.appendChild(div);
             });
 
-            // 渲染後立即更新標籤文字
             updateColumnLabels();
         }
 
@@ -674,33 +659,37 @@
                 seatingContainer.classList.remove('student-view');
             }
             
-            // 無論切換到哪邊，相對於當前狀態都是做一次 180 度旋轉
-            // (老師->學生=轉180, 學生->老師=再轉180還原)
             const newGrid = rotateGrid180(currentGrid);
             renderGridToDOM(newGrid);
         }
 
-        // V9.16: 專門處理「左起/右起」文字標籤的函式
+        // V9.17: 根據視角切換調整排數邏輯
         function updateColumnLabels() {
             const cols = document.querySelectorAll('.seat-column');
             const total = cols.length;
             const isRightStart = dirToggle.checked;
+            const isStudent = viewToggle.checked;
+
+            // 邏輯: 
+            // 老師視角(false) + 右起(true) = 倒序 (N..1)
+            // 老師視角(false) + 左起(false) = 正序 (1..N)
+            // 學生視角(true) + 右起(true) = 正序 (1..N) (物理右邊現在在左邊)
+            // 學生視角(true) + 左起(false) = 倒序 (N..1) (物理左邊現在在右邊)
+            
+            // 異或運算：如果兩個狀態不同，則採用倒序顯示 (N, N-1...)
+            const useDescOrder = (isRightStart !== isStudent);
 
             cols.forEach((col, index) => {
                 const inp = col.querySelector('.col-label-input');
                 let labelNum;
                 
-                if (isRightStart) {
-                    // 右起第1排：顯示 N, N-1, ..., 1
+                if (useDescOrder) {
                     labelNum = total - index;
                 } else {
-                    // 左起第1排：顯示 1, 2, ..., N
                     labelNum = index + 1;
                 }
                 
                 inp.value = `第${labelNum}排`;
-                // 給予唯一的 view-transition-name，確保旋轉時標籤不會亂飛，而是原地淡入淡出或跟隨
-                // 這裡我們希望標籤跟著欄位走，所以不需要特別技巧，DOM 結構跟著 column 走即可
             });
         }
 
@@ -995,8 +984,6 @@
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value=students.map(s=>`${s.id} ${s.name}`).join('\n'); 
-            
-            // 自動聚焦並全選
             textarea.focus();
             textarea.select();
         }
