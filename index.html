@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.1 (Resizer修復版)</title>
+    <title>監考儀表板 v9.4 (出勤卡自適應版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -87,7 +87,7 @@
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
             width: 380px; min-width: 250px;
-            flex: 1; /* 預設彈性，但在 JS 中會被覆蓋 */
+            flex: 1; 
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             overflow: hidden; position: relative;
         }
@@ -141,7 +141,7 @@
         .status-card.urgent .status-time { color: var(--c-red); }
         .progress-bg { position: absolute; left: 0; bottom: 0; top: 0; width: 0%; background-color: rgba(243, 223, 162, 0.5); transition: width 1s linear; z-index: 1; }
 
-        /* 自適應緊湊模式 */
+        /* 自適應緊湊模式 (Header) */
         .header-row.compact .clock-card, .header-row.compact .status-card { padding: 4px; }
         .header-row.compact .clock-label { font-size: 1.2rem; margin-bottom: 2px; }
         .header-row.compact .clock-date { font-size: 0.9rem; margin-bottom: 4px; display: none; }
@@ -181,18 +181,40 @@
         .time-input { border: 1px solid #ddd; border-radius: 4px; padding: 4px; font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; color: var(--c-grey); background: #f9f9f9; font-family: 'Courier New', monospace; letter-spacing: 1px; }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
+        /* --- 出勤卡 (V9.4 自適應改造) --- */
         .attendance-card { 
             background-color: var(--c-red); border: 2px solid var(--c-grey);
-            border-radius: 16px; height: 180px; flex-shrink: 0; 
+            border-radius: 16px; 
+            height: 180px; /* 預設高度 */
+            min-height: 60px; /* 最小高度 */
+            flex-shrink: 0; 
             display: flex; overflow: hidden; box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             padding: 5px; gap: 5px; 
+            transition: height 0.1s;
         }
-        .att-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; background: rgba(255, 255, 255, 0.95); border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); }
+        .att-box { 
+            flex: 1; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; padding: 8px;
+            background: rgba(255, 255, 255, 0.95); border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+            overflow: hidden; /* 防止內容溢出 */
+        }
         .att-box:last-child { flex: 1.8; }
-        .att-label { font-size: 1.2rem; font-weight: 900; margin-bottom: 5px; width: 100%; text-align: center; color: var(--c-grey); }
-        .att-val { font-size: 3rem; font-weight: 800; background: transparent; border: none; text-align: center; width: 100%; outline: none; color: var(--c-grey); padding: 0; margin: 0; }
+        
+        /* 預設字體大小 */
+        .att-label { font-size: 1.2rem; font-weight: 900; margin-bottom: 5px; width: 100%; text-align: center; color: var(--c-grey); transition: font-size 0.2s, margin 0.2s; }
+        .att-val { font-size: 3rem; font-weight: 800; background: transparent; border: none; text-align: center; width: 100%; outline: none; color: var(--c-grey); padding: 0; margin: 0; transition: font-size 0.2s; }
         .att-label-long { font-size: 1.0rem; white-space: nowrap; }
-        textarea.att-val { resize: none; height: 70px; font-size: 1.1rem; line-height: 1.4; border: 2px dashed #ccc; border-radius: 8px; }
+        textarea.att-val { resize: none; height: 70px; font-size: 1.1rem; line-height: 1.4; border: 2px dashed #ccc; border-radius: 8px; transition: height 0.2s; }
+        
+        /* 出勤卡緊湊模式 (.compact) */
+        .attendance-card.compact .att-box { padding: 4px; }
+        .attendance-card.compact .att-label { font-size: 0.9rem; margin-bottom: 2px; }
+        .attendance-card.compact .att-val { font-size: 1.8rem; }
+        .attendance-card.compact .att-label-long { font-size: 0.8rem; }
+        /* 當變得很矮時，讓 textarea 填滿剩餘高度 */
+        .attendance-card.compact textarea.att-val { height: 100%; font-size: 1rem; border-width: 1px; }
+
         
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
 
@@ -270,8 +292,8 @@
 
         .seat-box {
             width: 100%; 
-            flex: 1; /* 自動分配剩餘空間 */
-            min-height: 55px; /* 最小保護高度 */
+            flex: 1; 
+            min-height: 55px;
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
             position: relative; box-sizing: border-box; cursor: grab;
             transition: transform 0.1s; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
@@ -503,7 +525,7 @@
             }
         }
 
-        // --- Resizer 邏輯 (v9.1修復) ---
+        // --- Resizer 邏輯 ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -518,7 +540,6 @@
                     const rect = target.getBoundingClientRect();
                     startSize = direction === 'width' ? rect.width : rect.height;
                     
-                    // v9.1 關鍵修復：開始拖曳時，強制移除 Flex 屬性，避免被 CSS 規則拉回
                     target.style.flex = 'none';
 
                     document.body.classList.add('is-resizing');
@@ -553,9 +574,9 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- 自適應 ResizeObserver ---
+        // --- 自適應 ResizeObserver (Header & AttendanceCard) ---
         const headerRow = document.getElementById('headerRow');
-        const resizeObserver = new ResizeObserver(entries => {
+        const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
                 if (entry.contentRect.height < 180) {
                     headerRow.classList.add('compact');
@@ -564,7 +585,21 @@
                 }
             }
         });
-        resizeObserver.observe(headerRow);
+        headerObserver.observe(headerRow);
+
+        // V9.4 新增：AttendanceCard 的自適應監聽
+        const attCard = document.getElementById('attendanceCard');
+        const attObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                // 如果高度小於 140px，就切換成緊湊模式
+                if (entry.contentRect.height < 140) {
+                    attCard.classList.add('compact');
+                } else {
+                    attCard.classList.remove('compact');
+                }
+            }
+        });
+        attObserver.observe(attCard);
 
 
         // --- Drag & Drop ---
@@ -680,7 +715,9 @@
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
         }
-        function removeSubject(b){ if(confirm('刪除?')) b.closest('.subject-item').remove(); }
+        function removeSubject(b){ 
+            b.closest('.subject-item').remove(); 
+        }
         
         let students=[{id:"1",name:"王妍心"},{id:"2",name:"李大華"},{id:"3",name:"張小明"},{id:"4",name:"陳阿寶"},{id:"5",name:"林志豪"},{id:"6",name:"許家豪"},{id:"7",name:"吳雅婷"},{id:"8",name:"蔡欣怡"}];
         function createSeat(n,nm){
@@ -696,7 +733,12 @@
             el.className='seat-box'; el.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             updateStudentsFromDOM();
         }
-        window.deleteSeat=function(e,b){ e.stopPropagation(); if(confirm('移除?')) convertToEmpty(b.parentElement); }
+
+        window.deleteSeat = function(e, b) { 
+            e.stopPropagation(); 
+            convertToEmpty(b.parentElement);
+        }
+
         function updateStudentsFromDOM(){
             const tmp=[]; document.querySelectorAll('.seat-column').forEach(c=>{
                 c.querySelectorAll('.seat-box:not(.empty)').forEach(s=>{ tmp.push({id:s.querySelector('.seat-num').innerText, name:s.querySelector('.seat-name').innerText}); });
