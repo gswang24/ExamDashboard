@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.0 (全自適應座位表)</title>
+    <title>監考儀表板 v9.1 (Resizer修復版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -29,7 +29,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-body);
             margin: 0; 
-            padding: 20px; /* 預設留白 */
+            padding: 20px; 
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden; color: var(--c-grey);
@@ -37,20 +37,19 @@
             transition: padding 0.3s;
         }
 
-        /* --- V9.0 全螢幕優化：貼齊邊界 --- */
+        /* 全螢幕模式設定 */
         body:fullscreen, body:-webkit-full-screen {
-            padding: 0; /* 移除邊距 */
-            background-color: var(--c-grey); /* 背景深色化，避免縫隙 */
+            padding: 0; 
+            background-color: var(--c-grey);
         }
         
-        /* 全螢幕時讓圓角變直，或是保持一點點圓角視風格而定，這裡設為0讓邊界更密合 */
         body:fullscreen .clock-card,
         body:fullscreen .status-card,
         body:fullscreen .schedule-column .subject-list,
         body:fullscreen .attendance-card,
         body:fullscreen .seating-container {
             border-radius: 0; 
-            border-width: 0 1px 1px 0; /* 簡化邊框 */
+            border-width: 0 1px 1px 0; 
         }
 
         #fullscreenBtn {
@@ -88,7 +87,7 @@
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
             width: 380px; min-width: 250px;
-            flex: 1; 
+            flex: 1; /* 預設彈性，但在 JS 中會被覆蓋 */
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             overflow: hidden; position: relative;
         }
@@ -237,7 +236,7 @@
         .classroom-layout {
             flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; 
             justify-content: center; 
-            align-items: stretch; /* V9.0: 讓每排填滿高度 */
+            align-items: stretch; /* 每排填滿高度 */
             gap: 5px; 
             padding-bottom: 5px;
             overflow: auto; width: 100%;
@@ -249,11 +248,10 @@
         .seat-column { 
             display: flex; flex-direction: column; gap: 5px; align-items: center; 
             flex: 1; min-width: 60px; 
-            height: 100%; /* 確保該列填滿佈局 */
+            height: 100%; 
         }
         
         .col-label-input { 
-            /* V9.0: 固定標籤高度，不參與 flex 拉伸 */
             flex: 0 0 auto;
             margin-top: 5px; width: 100%; text-align: center; 
             background: transparent; border: 1px solid transparent; border-radius: 4px; 
@@ -272,10 +270,8 @@
 
         .seat-box {
             width: 100%; 
-            /* V9.0: 移除固定高度 (height: 75px) */
-            flex: 1; /* 關鍵：自動分配剩餘空間 */
-            min-height: 55px; /* 最小保護高度，避免被壓扁 */
-            
+            flex: 1; /* 自動分配剩餘空間 */
+            min-height: 55px; /* 最小保護高度 */
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
             position: relative; box-sizing: border-box; cursor: grab;
             transition: transform 0.1s; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
@@ -507,7 +503,7 @@
             }
         }
 
-        // --- Resizer 邏輯 ---
+        // --- Resizer 邏輯 (v9.1修復) ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -521,6 +517,10 @@
                     startPos = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     const rect = target.getBoundingClientRect();
                     startSize = direction === 'width' ? rect.width : rect.height;
+                    
+                    // v9.1 關鍵修復：開始拖曳時，強制移除 Flex 屬性，避免被 CSS 規則拉回
+                    target.style.flex = 'none';
+
                     document.body.classList.add('is-resizing');
                     if(direction !== 'width') document.body.classList.add('row-resize');
                     window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive:false});
@@ -530,9 +530,13 @@
                     if (e.type === 'touchmove') e.preventDefault();
                     let curr = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     let newSize = isBottomAnchor ? startSize + (startPos - curr) : startSize + (curr - startPos);
+                    
                     if (newSize > 40) { 
-                        if (direction === 'width') target.style.width = newSize+'px';
-                        else { target.style.height = newSize+'px'; target.style.flex = 'none'; }
+                        if (direction === 'width') {
+                            target.style.width = newSize+'px';
+                        } else { 
+                            target.style.height = newSize+'px'; 
+                        }
                     }
                 };
                 const onEnd = () => {
