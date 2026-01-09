@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.11 (絲滑慢動作版)</title>
+    <title>監考儀表板 v9.12 (名單自動全選版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -17,12 +17,12 @@
             --gap-size: 16px;
         }
 
-        /* --- v9.11 新增：控制視角切換動畫速度 --- */
+        /* 控制視角切換動畫速度 (0.8s) */
         ::view-transition-group(*),
         ::view-transition-old(*),
         ::view-transition-new(*) {
-            animation-duration: 0.8s !important; /* 將速度調慢至 0.8 秒 */
-            animation-timing-function: ease-in-out; /* 加減速效果，讓移動更自然 */
+            animation-duration: 0.8s !important;
+            animation-timing-function: ease-in-out;
         }
 
         *, *::before, *::after {
@@ -189,8 +189,6 @@
         .subject-header { display: flex; justify-content: space-between; align-items: center; }
         .subject-input { font-size: 1.4rem; font-weight: 800; border: none; outline: none; background: transparent; width: 80%; color: var(--c-grey); }
         .time-inputs { display: flex; align-items: center; gap: 5px; }
-        
-        /* 時間輸入框 */
         .time-input { 
             border: 1px solid #ddd; border-radius: 4px; padding: 4px; 
             font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; 
@@ -200,20 +198,19 @@
         }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
-        /* --- 出勤卡 (靠右對齊版) --- */
+        /* --- 出勤卡 --- */
         .attendance-card { 
             background-color: var(--c-red); border: 2px solid var(--c-grey);
             border-radius: 16px; 
             height: 180px; 
-            min-height: 60px; 
+            min-height: 60px; /* 最小高度 */
             flex-shrink: 0; display: flex; overflow: hidden; 
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             padding: 5px; gap: 5px; transition: height 0.1s;
         }
         .att-box { 
             flex: 1; display: flex; flex-direction: column; 
-            /* 靠右對齊 */
-            align-items: flex-end; 
+            align-items: flex-end; /* 靠右對齊 */
             justify-content: center; padding: 4px;
             background: rgba(255, 255, 255, 0.95); border-radius: 10px;
             border: 1px solid rgba(0,0,0,0.1);
@@ -223,16 +220,14 @@
         
         .att-label { 
             font-size: 1.2rem; font-weight: 900; 
-            width: 100%; text-align: right; /* 文字靠右 */
-            color: var(--c-grey); 
+            width: 100%; text-align: right; color: var(--c-grey); 
             transition: font-size 0.2s, margin 0.2s; 
             margin-bottom: 2px;
             line-height: 1.1; 
         }
         .att-val { 
             font-size: 3.5rem; font-weight: 800; 
-            background: transparent; border: none; 
-            text-align: right; /* 數字靠右 */
+            background: transparent; border: none; text-align: right; 
             width: 100%; outline: none; color: var(--c-grey); 
             padding: 0; margin: 0; 
             transition: font-size 0.2s;
@@ -557,7 +552,7 @@
             }, 600);
         }
 
-        // --- 視角切換 (V9.9 View Transition) ---
+        // --- 視角切換 (V9.11 慢動作View Transition) ---
         const viewToggle = document.getElementById('viewToggle');
         const seatingContainer = document.getElementById('seatingContainer');
 
@@ -640,7 +635,7 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- 自適應 ResizeObserver ---
+        // --- 自適應 ResizeObserver (Header & AttendanceCard) ---
         const headerRow = document.getElementById('headerRow');
         const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
@@ -862,7 +857,19 @@
                 c.appendChild(col);
             }
         }
-        function openModal(){ document.getElementById('modal').style.display='flex'; document.getElementById('studentListInput').value=students.map(s=>`${s.id} ${s.name}`).join('\n'); }
+        
+        // V9.12: 開啟名單時自動全選
+        function openModal(){ 
+            const modal = document.getElementById('modal');
+            const textarea = document.getElementById('studentListInput');
+            modal.style.display='flex'; 
+            textarea.value=students.map(s=>`${s.id} ${s.name}`).join('\n'); 
+            
+            // 自動聚焦並全選
+            textarea.focus();
+            textarea.select();
+        }
+        
         function closeModal(){ document.getElementById('modal').style.display='none'; }
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
