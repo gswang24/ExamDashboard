@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.10 (時間輸入優化版)</title>
+    <title>監考儀表板 v9.11 (絲滑慢動作版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -15,6 +15,14 @@
             --clock-bg: #333;
             --clock-text:#f0f0f0;
             --gap-size: 16px;
+        }
+
+        /* --- v9.11 新增：控制視角切換動畫速度 --- */
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+            animation-duration: 0.8s !important; /* 將速度調慢至 0.8 秒 */
+            animation-timing-function: ease-in-out; /* 加減速效果，讓移動更自然 */
         }
 
         *, *::before, *::after {
