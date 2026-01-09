@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v8.8 (緊湊大座位版)</title>
+    <title>監考儀表板 v8.9 (Github Pages版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -23,6 +23,7 @@
             -webkit-user-select: none;
             user-select: none;
         }
+        /* 允許輸入框選取文字 */
         input, textarea { -webkit-user-select: auto; user-select: auto; }
 
         body {
@@ -54,14 +55,17 @@
             transition: background-color 0.2s;
         }
         .resizer:hover { background-color: rgba(0,0,0,0.05); border-radius: 4px; }
+        
+        /* 增加觸控區大小，但視覺上保持細緻 */
         .resizer-v { width: var(--gap-size); cursor: col-resize; height: 100%; margin: 0; position: relative; }
         .resizer-h { height: var(--gap-size); cursor: row-resize; width: 100%; margin: 0; position: relative; }
 
+        /* 拖曳時的全域樣式 */
         body.is-resizing { cursor: col-resize !important; }
         body.is-resizing.row-resize { cursor: row-resize !important; } 
         body.is-resizing * { pointer-events: none; } 
 
-        .header-row { display: flex; height: 220px; min-height: 120px; flex-shrink: 0; }
+        .header-row { display: flex; height: 220px; min-height: 120px; flex-shrink: 0; width: 100%; }
 
         /* --- 左側：目前時間 --- */
         .clock-card {
@@ -70,8 +74,10 @@
             padding: 10px;
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            width: 380px; min-width: 250px;
-            flex: 1; /* 1:2 比例 */
+            /* 預設寬度設定，但允許 flex 調整 */
+            width: 35%; 
+            min-width: 250px;
+            flex: 0 0 auto; /* 改為固定 flex-basis 以配合 JS Resizer */
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             overflow: hidden; position: relative;
         }
@@ -89,7 +95,6 @@
         
         .flip-clock-container { display: flex; gap: 10px; align-items: center; justify-content: center; }
         
-        /* 翻頁鐘樣式 (v8.6 經典大字體) */
         .flip-unit {
             position: relative;
             width: 100px;
@@ -146,7 +151,8 @@
 
         /* --- 右側：剩餘時間 --- */
         .status-card {
-            flex: 2;
+            /* 讓剩餘時間自動填滿剩餘空間 */
+            flex: 1; 
             background-color: var(--c-grey); color: var(--c-linen);
             border-radius: 16px; display: flex; flex-direction: column;
             align-items: center; justify-content: center; position: relative;
@@ -217,22 +223,21 @@
         
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
 
-        /* --- 座位表容器 (緊湊修正) --- */
+        /* --- 座位表容器 --- */
         .seating-container {
             flex: 1; background-color: var(--c-linen);
             border: 2px solid var(--c-grey); border-radius: 16px;
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15); 
-            padding: 10px; /* v8.8: 收緊 Padding，爭取空間 */
+            padding: 10px;
             display: flex; flex-direction: column; 
             position: relative; min-width: 0; overflow: hidden; 
         }
 
         .seating-toolbar { 
-            display: flex; justify-content: space-between; margin-bottom: 5px; /* 收緊工具列下方間距 */
+            display: flex; justify-content: space-between; margin-bottom: 5px; 
             align-items: center; flex-wrap: wrap; gap: 5px; flex-shrink: 0; 
         }
 
-        /* 保留 v8.6 的視角切換器 */
         .view-control-group {
             display: flex; align-items: center; gap: 8px; 
             margin-left: auto; margin-right: 10px;
@@ -259,7 +264,7 @@
             flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; 
             justify-content: center; align-items: flex-start;
             gap: 5px; 
-            padding-bottom: 10px; /* v8.8: 大幅減少底部間距，讓講臺貼近座位 */
+            padding-bottom: 10px; 
             overflow: auto; width: 100%;
             -webkit-overflow-scrolling: touch;
             transition: padding 0.3s;
@@ -272,7 +277,7 @@
 
         .seat-box {
             width: 100%; 
-            height: 64px; /* v8.8: 增加座位高度 (原55px)，填補空隙讓視覺更飽滿 */
+            height: 64px; 
             min-height: 40px; 
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
             position: relative; box-sizing: border-box; cursor: grab;
@@ -292,7 +297,6 @@
         .seat-highlight { background-color: var(--c-teal) !important; color: #fff; }
         .seat-highlight .seat-num { background-color: #fff; color: var(--c-teal); }
 
-        /* 講臺 (保持 v8.6 的 Flex 結構但收緊 Margin) */
         .podium {
             width: 180px; 
             height: 40px; 
@@ -301,18 +305,15 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: 900; letter-spacing: 5px; pointer-events: none;
             box-shadow: 4px 4px 0px rgba(0,0,0,0.1); border-radius: 8px;
-            
-            /* v8.8: 收緊上下 margin，拉近與座位的距離 */
             margin: 5px 0; 
-            
             align-self: center; 
             transition: all 0.3s;
-            order: 2; /* 預設在下方 */
+            order: 2; 
             z-index: 10;
         }
 
         .seating-container.student-view .podium {
-            order: 0; /* 移到上方 */
+            order: 0; 
             margin-bottom: 10px;
         }
 
@@ -509,7 +510,7 @@
             }
         }
 
-        // --- Resizer 邏輯 ---
+        // --- Resizer 邏輯 (v8.9 修正版) ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -519,36 +520,71 @@
                 let startPos = 0, startSize = 0;
 
                 const onStart = (e) => {
+                    // 防止觸控時的滾動
                     if (e.type === 'touchstart') e.preventDefault();
-                    startPos = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
+                    
+                    // 記錄初始位置
+                    startPos = direction === 'width' 
+                        ? (e.type.includes('touch') ? e.touches[0].clientX : e.clientX) 
+                        : (e.type.includes('touch') ? e.touches[0].clientY : e.clientY);
+                    
+                    // 取得當前計算後的寬/高
                     const rect = target.getBoundingClientRect();
                     startSize = direction === 'width' ? rect.width : rect.height;
+
+                    // 關鍵修正：開始拖曳時，將 target 的 flex 屬性鎖定，避免 flex-grow 干擾
+                    // 這讓 "目前時間" 面板變成固定寬度，而 "剩餘時間" 繼續 flex:1 填滿剩餘
+                    target.style.flex = 'none';
+                    if (direction === 'width') target.style.width = startSize + 'px';
+                    else target.style.height = startSize + 'px';
+
                     document.body.classList.add('is-resizing');
                     if(direction !== 'width') document.body.classList.add('row-resize');
-                    window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive:false});
-                    window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
+                    
+                    window.addEventListener('mousemove', onMove); 
+                    window.addEventListener('touchmove', onMove, {passive:false});
+                    window.addEventListener('mouseup', onEnd); 
+                    window.addEventListener('touchend', onEnd);
                 };
+
                 const onMove = (e) => {
                     if (e.type === 'touchmove') e.preventDefault();
-                    let curr = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
-                    let newSize = isBottomAnchor ? startSize + (startPos - curr) : startSize + (curr - startPos);
-                    if (newSize > 100) { 
-                        if (direction === 'width') target.style.width = newSize+'px';
-                        else { target.style.height = newSize+'px'; target.style.flex = 'none'; }
+                    
+                    let curr = direction === 'width' 
+                        ? (e.type.includes('touch') ? e.touches[0].clientX : e.clientX) 
+                        : (e.type.includes('touch') ? e.touches[0].clientY : e.clientY);
+                    
+                    let newSize = isBottomAnchor 
+                        ? startSize + (startPos - curr) 
+                        : startSize + (curr - startPos);
+
+                    // 限制最小尺寸，避免崩潰
+                    if (newSize > 50) { 
+                        if (direction === 'width') target.style.width = newSize + 'px';
+                        else target.style.height = newSize + 'px';
                     }
                 };
+
                 const onEnd = () => {
-                    document.body.classList.remove('is-resizing'); document.body.classList.remove('row-resize');
-                    window.removeEventListener('mousemove', onMove); window.removeEventListener('touchmove', onMove);
-                    window.removeEventListener('mouseup', onEnd); window.removeEventListener('touchend', onEnd);
+                    document.body.classList.remove('is-resizing'); 
+                    document.body.classList.remove('row-resize');
+                    window.removeEventListener('mousemove', onMove); 
+                    window.removeEventListener('touchmove', onMove);
+                    window.removeEventListener('mouseup', onEnd); 
+                    window.removeEventListener('touchend', onEnd);
                 };
-                resizer.addEventListener('mousedown', onStart); resizer.addEventListener('touchstart', onStart, {passive:false});
+
+                resizer.addEventListener('mousedown', onStart); 
+                resizer.addEventListener('touchstart', onStart, {passive:false});
             };
+
+            // 設定所有的 Resizer
             setupResizer('resizerHeader', 'clockCard', 'width');   
             setupResizer('resizerMain', 'headerRow', 'height');    
             setupResizer('resizerContent', 'scheduleCol', 'width'); 
             setupResizer('resizerSubjectSplit', 'attendanceCard', 'height', true);
         }
+        
         window.addEventListener('DOMContentLoaded', initResizable);
 
         // --- Drag & Drop ---
