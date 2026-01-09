@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.12 (名單自動全選版)</title>
+    <title>監考儀表板 v9.13</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -296,6 +296,11 @@
             order: 1; 
         }
 
+        /* 關鍵：右起模式翻轉順序 */
+        .classroom-layout.right-start {
+            flex-direction: row-reverse;
+        }
+
         .seat-column { 
             display: flex; flex-direction: column; gap: 5px; align-items: center; 
             flex: 1; min-width: 60px; 
@@ -479,6 +484,15 @@
                 </div>
                 
                 <div class="view-control-group">
+                    <span class="view-label" onclick="setDirection(false)">左起</span>
+                    <label class="switch">
+                        <input type="checkbox" id="dirToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="view-label" onclick="setDirection(true)">右起</span>
+                    
+                    <div style="width:1px; height:20px; background:#ccc; margin:0 10px;"></div>
+
                     <span class="view-label" onclick="setView(false)">老師視角</span>
                     <label class="switch">
                         <input type="checkbox" id="viewToggle">
@@ -552,10 +566,13 @@
             }, 600);
         }
 
-        // --- 視角切換 (V9.11 慢動作View Transition) ---
+        // --- 視角切換 & 排序切換 ---
         const viewToggle = document.getElementById('viewToggle');
+        const dirToggle = document.getElementById('dirToggle');
         const seatingContainer = document.getElementById('seatingContainer');
+        const classroomLayout = document.getElementById('classroomLayout');
 
+        // 老師/學生視角
         function setView(isStudent) {
             if (document.startViewTransition) {
                 document.startViewTransition(() => {
@@ -565,6 +582,19 @@
             } else {
                 viewToggle.checked = isStudent;
                 triggerViewChange();
+            }
+        }
+
+        // 左起/右起排序
+        function setDirection(isRight) {
+            if (document.startViewTransition) {
+                document.startViewTransition(() => {
+                    dirToggle.checked = isRight;
+                    triggerDirChange();
+                });
+            } else {
+                dirToggle.checked = isRight;
+                triggerDirChange();
             }
         }
 
@@ -578,11 +608,29 @@
             }
         });
 
+        dirToggle.addEventListener('change', () => {
+            if (document.startViewTransition) {
+                document.startViewTransition(() => {
+                    triggerDirChange();
+                });
+            } else {
+                triggerDirChange();
+            }
+        });
+
         function triggerViewChange() {
             if (viewToggle.checked) {
                 seatingContainer.classList.add('student-view');
             } else {
                 seatingContainer.classList.remove('student-view');
+            }
+        }
+
+        function triggerDirChange() {
+            if (dirToggle.checked) {
+                classroomLayout.classList.add('right-start');
+            } else {
+                classroomLayout.classList.remove('right-start');
             }
         }
 
@@ -858,7 +906,6 @@
             }
         }
         
-        // V9.12: 開啟名單時自動全選
         function openModal(){ 
             const modal = document.getElementById('modal');
             const textarea = document.getElementById('studentListInput');
