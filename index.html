@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.13</title>
+    <title>監考儀表板 v9.14 (矩陣轉置絲滑版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -189,13 +189,7 @@
         .subject-header { display: flex; justify-content: space-between; align-items: center; }
         .subject-input { font-size: 1.4rem; font-weight: 800; border: none; outline: none; background: transparent; width: 80%; color: var(--c-grey); }
         .time-inputs { display: flex; align-items: center; gap: 5px; }
-        .time-input { 
-            border: 1px solid #ddd; border-radius: 4px; padding: 4px; 
-            font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; 
-            color: var(--c-grey); background: #f9f9f9; 
-            font-family: 'Courier New', monospace; letter-spacing: 1px;
-            cursor: text;
-        }
+        .time-input { border: 1px solid #ddd; border-radius: 4px; padding: 4px; font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; color: var(--c-grey); background: #f9f9f9; font-family: 'Courier New', monospace; letter-spacing: 1px; }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
         /* --- 出勤卡 --- */
@@ -296,7 +290,7 @@
             order: 1; 
         }
 
-        /* 關鍵：右起模式翻轉順序 */
+        /* V9.14: 右起排序列 */
         .classroom-layout.right-start {
             flex-direction: row-reverse;
         }
@@ -572,7 +566,6 @@
         const seatingContainer = document.getElementById('seatingContainer');
         const classroomLayout = document.getElementById('classroomLayout');
 
-        // 老師/學生視角
         function setView(isStudent) {
             if (document.startViewTransition) {
                 document.startViewTransition(() => {
@@ -585,7 +578,6 @@
             }
         }
 
-        // 左起/右起排序
         function setDirection(isRight) {
             if (document.startViewTransition) {
                 document.startViewTransition(() => {
@@ -618,11 +610,157 @@
             }
         });
 
+        // V9.14: 矩陣轉置邏輯
+        // Helper: 從 DOM 讀取目前的 Grid 結構 (Array of Columns)
+        function getGridFromDOM() {
+            const cols = Array.from(document.querySelectorAll('.seat-column'));
+            const grid = []; // col, row
+            cols.forEach(colEl => {
+                const rowEls = Array.from(colEl.querySelectorAll('.seat-box'));
+                // 讀取每欄的 input label
+                const labelInput = colEl.querySelector('.col-label-input');
+                const labelText = labelInput ? labelInput.value : '';
+                
+                const colData = {
+                    label: labelText,
+                    seats: rowEls.map(seat => {
+                        if (seat.classList.contains('empty')) return null;
+                        const num = seat.querySelector('.seat-num').innerText;
+                        const name = seat.querySelector('.seat-name').innerText;
+                        // 嘗試抓取 view-transition-name
+                        const style = seat.getAttribute('style') || '';
+                        const match = style.match(/view-transition-name:\s*([^;]+)/);
+                        const vName = match ? match[1] : '';
+                        return { id: num, name: name, vName: vName };
+                    })
+                };
+                grid.push(colData);
+            });
+            return grid;
+        }
+
+        // Helper: 轉置 + 主對角線倒序 (Cols -> Rows, then Reverse Rows order)
+        // 這樣可以達到 90度旋轉的效果
+        function transposeGrid(grid) {
+            if (!grid.length) return [];
+            
+            // 找出最大行數，建立新矩陣
+            let maxRows = 0;
+            grid.forEach(c => maxRows = Math.max(maxRows, c.seats.length));
+            
+            const newGrid = [];
+            
+            // 轉置: newGrid[row_index] 變成新的 Col
+            for (let r = 0; r < maxRows; r++) {
+                const newColSeats = [];
+                for (let c = 0; c < grid.length; c++) {
+                    // grid[c].seats[r] 移到 newColSeats
+                    // 注意：如果原 grid 長短不一，這裡要補 null
+                    const seat = (r < grid[c].seats.length) ? grid[c].seats[r] : null;
+                    newColSeats.push(seat);
+                }
+                
+                // V9.14: 主對角線倒序 (在這裡解釋為：新產生的 Column 內容反轉)
+                // 原本是 [Col 0 Row r], [Col 1 Row r]...
+                // 反轉後，原本在最右邊的列會跑到上面，或者最左邊。
+                // 為了符合「學生視角」，通常是將講台位置轉 90 度。
+                // 我們採用 newColSeats.reverse() 來模擬旋轉效果。
+                newColSeats.reverse();
+
+                newGrid.push({
+                    label: `第${r + 1}排`, // 重新生成標籤
+                    seats: newColSeats
+                });
+            }
+            
+            return newGrid;
+        }
+
+        // Helper: 重新渲染 DOM
+        function renderGridToDOM(grid) {
+            const container = document.getElementById('classroomLayout');
+            container.innerHTML = '';
+            
+            grid.forEach((colData, idx) => {
+                const div = document.createElement('div');
+                div.className = 'seat-column';
+                
+                colData.seats.forEach(seat => {
+                    if (seat) {
+                        const s = createSeat(seat.id, seat.name);
+                        // 恢復 view-transition-name
+                        if (seat.vName) s.style.viewTransitionName = seat.vName;
+                        div.appendChild(s);
+                    } else {
+                        const s = createSeat('', '');
+                        convertToEmpty(s);
+                        div.appendChild(s);
+                    }
+                });
+                
+                const inp = document.createElement('input'); 
+                inp.className = 'col-label-input'; 
+                inp.value = colData.label; 
+                inp.style.viewTransitionName = `col-label-${idx+1}`; // 簡單重分配 ID
+                div.appendChild(inp);
+                container.appendChild(div);
+            });
+        }
+
+        // 觸發視角變更 (包含轉置邏輯)
         function triggerViewChange() {
-            if (viewToggle.checked) {
+            const isStudent = viewToggle.checked;
+            
+            if (isStudent) {
+                // 轉為學生視角：執行轉置
                 seatingContainer.classList.add('student-view');
+                const currentGrid = getGridFromDOM();
+                const newGrid = transposeGrid(currentGrid);
+                renderGridToDOM(newGrid);
             } else {
+                // 轉回老師視角：執行反向轉置 (其實邏輯一樣，只是因為 reverse 的關係，需要反操作)
+                // 為了簡化，我們可以重新讀取 DOM 再轉一次 (Transpose + Reverse of Transpose + Reverse = Original? No)
+                // 其實最簡單的是：每次切換都執行同樣的 Transpose + Reverse 邏輯，
+                // 因為 (Rotate 90) x 4 = Original. 
+                // 但使用者只有兩個開關。
+                // 為了保證資料不亂，我們其實應該只在 "Teacher -> Student" 時轉置。
+                // "Student -> Teacher" 時，我們需要 "逆轉置"。
+                // 逆操作：Reverse columns, then Transpose.
+                
                 seatingContainer.classList.remove('student-view');
+                
+                const currentGrid = getGridFromDOM();
+                
+                // Reverse first (Undo the reverse)
+                const unReversedGrid = currentGrid.map(col => {
+                    return {
+                        label: col.label,
+                        seats: [...col.seats].reverse()
+                    };
+                });
+                
+                // Transpose back
+                // Transpose logic is symmetrical if square, but generic transpose swaps rows/cols.
+                // We use the same transpose logic loop.
+                
+                // Simple generic transpose again
+                let maxRows = 0;
+                unReversedGrid.forEach(c => maxRows = Math.max(maxRows, c.seats.length));
+                const restoredGrid = [];
+                
+                for(let r=0; r<maxRows; r++) {
+                    const newSeats = [];
+                    for(let c=0; c<unReversedGrid.length; c++) {
+                        const seat = (r < unReversedGrid[c].seats.length) ? unReversedGrid[c].seats[r] : null;
+                        newSeats.push(seat);
+                    }
+                    restoredGrid.push({
+                        label: `第${r+1}排`,
+                        seats: newSeats
+                    });
+                }
+                
+                renderGridToDOM(restoredGrid);
             }
         }
 
@@ -683,7 +821,7 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- 自適應 ResizeObserver (Header & AttendanceCard) ---
+        // --- 自適應 ResizeObserver ---
         const headerRow = document.getElementById('headerRow');
         const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
@@ -831,13 +969,17 @@
             const s=document.createElement('div'); s.className='seat-box';
             s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             s.onclick=function(){ if(this.classList.contains('empty')) addNewStudent(this); };
+            // V9.14: 綁定 view-transition-name
+            if(n) s.style.viewTransitionName = 'seat-' + n;
             enableDragAndDrop(s); return s;
         }
-        function convertToEmpty(el){ el.className='seat-box empty'; el.innerHTML='<div class="add-sign">+</div>'; updateStudentsFromDOM(); }
+        function convertToEmpty(el){ el.className='seat-box empty'; el.innerHTML='<div class="add-sign">+</div>'; el.style.viewTransitionName = ''; updateStudentsFromDOM(); }
         function addNewStudent(el){
             const n=prompt("座號"), nm=prompt("姓名");
             if(!n||!nm)return;
-            el.className='seat-box'; el.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
+            el.className='seat-box'; 
+            el.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
+            el.style.viewTransitionName = 'seat-' + n;
             updateStudentsFromDOM();
         }
 
@@ -871,7 +1013,10 @@
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
             if(!pool.length)return;
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            s.forEach((x,i)=>{ x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`; });
+            s.forEach((x,i)=>{ 
+                x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
+                x.style.viewTransitionName = 'seat-' + pool[i].id;
+            });
             students=pool;
         }
         function refillSeating(arr){
@@ -883,7 +1028,11 @@
             while(total<pool.length){ addColumn(); cols=document.querySelectorAll('.seat-column'); total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); }
             let idx=0;
             cols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
-                if(idx<pool.length){ const p=pool[idx++]; s.className='seat-box'; s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${p.id}</div><div class="seat-name">${p.name}</div>`; }
+                if(idx<pool.length){ 
+                    const p=pool[idx++]; s.className='seat-box'; 
+                    s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${p.id}</div><div class="seat-name">${p.name}</div>`; 
+                    s.style.viewTransitionName = 'seat-' + p.id;
+                }
                 else convertToEmpty(s);
             })});
             students=pool;
@@ -896,7 +1045,11 @@
             for(let i=0;i<7;i++){
                 const col=document.createElement('div'); col.className='seat-column';
                 for(let r=0;r<6;r++){
-                    if(idx<pool.length){ const p=pool[idx++]; col.appendChild(createSeat(p.id,p.name)); }
+                    if(idx<pool.length){ 
+                        const p=pool[idx++]; 
+                        const s = createSeat(p.id,p.name);
+                        col.appendChild(s); 
+                    }
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
                 const inp=document.createElement('input'); inp.className='col-label-input'; inp.value=`第${i+1}排`; 
@@ -905,18 +1058,14 @@
                 c.appendChild(col);
             }
         }
-        
         function openModal(){ 
             const modal = document.getElementById('modal');
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value=students.map(s=>`${s.id} ${s.name}`).join('\n'); 
-            
-            // 自動聚焦並全選
             textarea.focus();
             textarea.select();
         }
-        
         function closeModal(){ document.getElementById('modal').style.display='none'; }
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
