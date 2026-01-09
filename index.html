@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.18 (連動邏輯+座位動畫版)</title>
+    <title>監考儀表板 v9.19 (統一右上角標籤版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -17,11 +17,10 @@
             --gap-size: 16px;
         }
 
-        /* 恢復 View Transition 動畫，但針對 input 排除 (讓文字變更瞬間完成) */
+        /* View Transition 動畫設定 */
         ::view-transition-group(*) {
             animation-duration: 0.5s;
         }
-        /* 避免排的名稱(input)產生獨立的動畫層，讓它跟隨容器瞬間變化 */
         .col-label-input {
             view-transition-name: none !important;
         }
@@ -196,7 +195,7 @@
         }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
-        /* --- 出勤卡 --- */
+        /* --- 出勤卡 (V9.19 修改) --- */
         .attendance-card { 
             background-color: var(--c-red); border: 2px solid var(--c-grey);
             border-radius: 16px; 
@@ -208,8 +207,9 @@
         }
         .att-box { 
             flex: 1; display: flex; flex-direction: column; 
-            align-items: flex-end; 
-            justify-content: center; padding: 4px;
+            align-items: flex-end; /* 內容靠右對齊 */
+            justify-content: flex-start; /* 內容從上方開始 (標籤置頂) */
+            padding: 8px 12px; /* 增加內距，讓右上角標籤好看一點 */
             background: rgba(255, 255, 255, 0.95); border-radius: 10px;
             border: 1px solid rgba(0,0,0,0.1);
             gap: 0; 
@@ -220,7 +220,7 @@
             font-size: 1.2rem; font-weight: 900; 
             width: 100%; text-align: right; color: var(--c-grey); 
             transition: font-size 0.2s, margin 0.2s; 
-            margin-bottom: 2px;
+            margin-bottom: 0; /* 標籤貼頂 */
             line-height: 1.1; 
         }
         .att-val { 
@@ -228,19 +228,30 @@
             background: transparent; border: none; text-align: right; 
             width: 100%; outline: none; color: var(--c-grey); 
             padding: 0; margin: 0; 
+            /* 讓數字在剩餘空間垂直置中 */
+            margin-top: auto;
+            margin-bottom: auto;
             transition: font-size 0.2s;
             line-height: 1.1;
             cursor: text;
         }
 
         .att-label-long { font-size: 1.0rem; white-space: nowrap; }
-        textarea.att-val { resize: none; height: 100%; font-size: 1.1rem; line-height: 1.4; border: 2px dashed #ccc; border-radius: 8px; transition: height 0.2s; }
+        /* 未到號碼輸入框稍微不同 */
+        textarea.att-val { 
+            resize: none; height: 100%; width: 100%;
+            font-size: 1.1rem; line-height: 1.4; 
+            border: 2px dashed #ccc; border-radius: 8px; 
+            transition: height 0.2s; 
+            margin-top: 5px; /* 與標籤的間距 */
+            margin-bottom: 0; 
+        }
         
-        .attendance-card.compact .att-box { padding: 2px; }
-        .attendance-card.compact .att-label { font-size: 0.9rem; margin-bottom: 0; }
+        .attendance-card.compact .att-box { padding: 4px; }
+        .attendance-card.compact .att-label { font-size: 0.9rem; }
         .attendance-card.compact .att-val { font-size: 1.8rem; }
         .attendance-card.compact .att-label-long { font-size: 0.8rem; }
-        .attendance-card.compact textarea.att-val { border-width: 1px; font-size: 1rem; }
+        .attendance-card.compact textarea.att-val { border-width: 1px; font-size: 1rem; margin-top: 2px; }
 
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
 
@@ -564,16 +575,11 @@
 
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
-            
             viewToggle.checked = isStudent;
             
-            // --- 連動邏輯：視角切換時，強制翻轉左起/右起設定 ---
-            // 這樣可以保持「原本在左邊的第1排」，換個視角後「看起來在右邊但還是第1排」的邏輯
+            // 連動邏輯：視角切換時，強制翻轉左起/右起設定
             dirToggle.checked = !dirToggle.checked;
 
-            // 使用 View Transition 產生座位移動動畫
-            // 但因為 CSS 把 .col-label-input 的 view-transition-name 設為 none，
-            // 只有座位會飛，排的名稱(input value)會隨容器直接定位並更新數值
             document.startViewTransition(() => {
                 triggerViewChangeLogic();
             });
@@ -584,14 +590,12 @@
             dirToggle.checked = isRight;
             
             // 單純切換左起/右起時，只更新標籤，不影響老師/學生視角開關
-            // 這裡不需要 View Transition 動畫，因為只是改名字
             updateColumnLabels();
         }
 
         viewToggle.addEventListener('change', () => {
             // 手動點擊開關時，也觸發連動
             dirToggle.checked = !dirToggle.checked;
-            
             document.startViewTransition(() => {
                 triggerViewChangeLogic();
             });
@@ -626,9 +630,7 @@
         // Helper: 180度旋轉 (點對稱)
         function rotateGrid180(grid) {
             if (!grid.length) return [];
-            // 1. 複製並反轉 Column 順序
             const newGrid = [...grid].reverse();
-            // 2. 反轉每個 Column 內的 Seats
             newGrid.forEach(col => {
                 col.seats = col.seats.reverse();
             });
@@ -655,7 +657,6 @@
                     }
                 });
                 
-                // 加入標籤輸入框
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
                 div.appendChild(inp);
@@ -675,29 +676,22 @@
             
             const newGrid = rotateGrid180(currentGrid);
             renderGridToDOM(newGrid);
-            updateColumnLabels(); // 渲染後更新標籤
+            updateColumnLabels(); 
         }
 
-        // V9.18: 排名稱倒序邏輯
+        // 排名稱倒序邏輯
         function updateColumnLabels() {
             const cols = document.querySelectorAll('.seat-column');
             const total = cols.length;
-            const isRightStart = dirToggle.checked; // 來自開關狀態
-
-            // 邏輯: 
-            // 如果是「右起」(checked=true)，則畫面上最左邊的 Column (DOM index 0) 顯示為第 N 排，最右邊是第 1 排
-            // 如果是「左起」(checked=false)，則畫面上最左邊的 Column (DOM index 0) 顯示為第 1 排
-            // 由於座位本身已經物理旋轉(DOM Reorder)，我們只需要依照當前的 DOM 順序來標示即可
+            const isRightStart = dirToggle.checked; 
 
             cols.forEach((col, index) => {
                 const inp = col.querySelector('.col-label-input');
                 let labelNum;
                 
                 if (isRightStart) {
-                    // 右起：Index 0 是 N ... Index Max 是 1
                     labelNum = total - index;
                 } else {
-                    // 左起：Index 0 是 1 ...
                     labelNum = index + 1;
                 }
                 
@@ -945,7 +939,7 @@
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
             if(!pool.length)return;
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            // 使用 Transition 讓重排時有動畫
+            
             document.startViewTransition(() => {
                 s.forEach((x,i)=>{ 
                     x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
