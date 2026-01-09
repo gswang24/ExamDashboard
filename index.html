@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.14 (矩陣轉置絲滑版)</title>
+    <title>監考儀表板 v9.15 (順時針90度版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -189,7 +189,13 @@
         .subject-header { display: flex; justify-content: space-between; align-items: center; }
         .subject-input { font-size: 1.4rem; font-weight: 800; border: none; outline: none; background: transparent; width: 80%; color: var(--c-grey); }
         .time-inputs { display: flex; align-items: center; gap: 5px; }
-        .time-input { border: 1px solid #ddd; border-radius: 4px; padding: 4px; font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; color: var(--c-grey); background: #f9f9f9; font-family: 'Courier New', monospace; letter-spacing: 1px; }
+        .time-input { 
+            border: 1px solid #ddd; border-radius: 4px; padding: 4px; 
+            font-size: 1.3rem; font-weight: bold; width: 100%; text-align: center; 
+            color: var(--c-grey); background: #f9f9f9; 
+            font-family: 'Courier New', monospace; letter-spacing: 1px;
+            cursor: text;
+        }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
         /* --- 出勤卡 --- */
@@ -290,7 +296,7 @@
             order: 1; 
         }
 
-        /* V9.14: 右起排序列 */
+        /* V9.15: 右起第1排 */
         .classroom-layout.right-start {
             flex-direction: row-reverse;
         }
@@ -610,8 +616,7 @@
             }
         });
 
-        // V9.14: 矩陣轉置邏輯
-        // Helper: 從 DOM 讀取目前的 Grid 結構 (Array of Columns)
+        // V9.15: 矩陣轉置邏輯 (順時針 90度)
         function getGridFromDOM() {
             const cols = Array.from(document.querySelectorAll('.seat-column'));
             const grid = []; // col, row
@@ -627,7 +632,6 @@
                         if (seat.classList.contains('empty')) return null;
                         const num = seat.querySelector('.seat-num').innerText;
                         const name = seat.querySelector('.seat-name').innerText;
-                        // 嘗試抓取 view-transition-name
                         const style = seat.getAttribute('style') || '';
                         const match = style.match(/view-transition-name:\s*([^;]+)/);
                         const vName = match ? match[1] : '';
@@ -639,44 +643,104 @@
             return grid;
         }
 
-        // Helper: 轉置 + 主對角線倒序 (Cols -> Rows, then Reverse Rows order)
-        // 這樣可以達到 90度旋轉的效果
-        function transposeGrid(grid) {
+        // Helper: 順時針轉置 (Clockwise 90)
+        // 邏輯: New Col i = Old Row (Max-1-i)
+        function transposeGridClockwise(grid) {
             if (!grid.length) return [];
             
-            // 找出最大行數，建立新矩陣
+            // 找出最大行數
             let maxRows = 0;
             grid.forEach(c => maxRows = Math.max(maxRows, c.seats.length));
             
             const newGrid = [];
             
-            // 轉置: newGrid[row_index] 變成新的 Col
-            for (let r = 0; r < maxRows; r++) {
+            // 我們要產生 maxRows 個新的 Columns
+            // 順時針旋轉:
+            // Old:
+            // R0: [A, B]
+            // R1: [C, D]
+            //
+            // New:
+            // Col0: [C, A] (Old Row 1 Reversed? No. Old Row 1 is [C,D]. Transpose is [A, C] [B, D]. Reverse Columns order is [C, A]?)
+            // Let's trace visually.
+            // 1 2
+            // 3 4
+            // CW 90 ->
+            // 3 1
+            // 4 2
+            //
+            // New Col 0: [3, 4]. (Which is Old Row 1)
+            // New Col 1: [1, 2]. (Which is Old Row 0)
+            //
+            // So: Iterate Old Rows from Bottom to Top. Each Old Row becomes a New Column.
+            
+            for (let r = maxRows - 1; r >= 0; r--) {
                 const newColSeats = [];
                 for (let c = 0; c < grid.length; c++) {
-                    // grid[c].seats[r] 移到 newColSeats
-                    // 注意：如果原 grid 長短不一，這裡要補 null
                     const seat = (r < grid[c].seats.length) ? grid[c].seats[r] : null;
                     newColSeats.push(seat);
                 }
                 
-                // V9.14: 主對角線倒序 (在這裡解釋為：新產生的 Column 內容反轉)
-                // 原本是 [Col 0 Row r], [Col 1 Row r]...
-                // 反轉後，原本在最右邊的列會跑到上面，或者最左邊。
-                // 為了符合「學生視角」，通常是將講台位置轉 90 度。
-                // 我們採用 newColSeats.reverse() 來模擬旋轉效果。
-                newColSeats.reverse();
+                // V9.15: 這裡是直接取 Row 當 Col，不需要 reverse 內容 (因為 3, 4 變成 Col [3, 4] 順序一致)
+                // 這樣會變成:
+                // NewCol0 = [3, 4] -> Visual Vertical 3 4
+                // NewCol1 = [1, 2] -> Visual Vertical 1 2
+                // Result:
+                // 3 1
+                // 4 2
+                // Correct for CW 90.
 
                 newGrid.push({
-                    label: `第${r + 1}排`, // 重新生成標籤
+                    label: `第${maxRows - r}排`, // 重新生成標籤 (倒序)
                     seats: newColSeats
                 });
             }
-            
             return newGrid;
         }
 
-        // Helper: 重新渲染 DOM
+        // Helper: 逆時針轉置 (Counter-Clockwise 90) - 用於切回老師視角
+        // 邏輯: 其實就是順時針轉 3 次，或是簡單的 Transpose + Reverse Content
+        function transposeGridCounterClockwise(grid) {
+             if (!grid.length) return [];
+            let maxRows = 0;
+            grid.forEach(c => maxRows = Math.max(maxRows, c.seats.length));
+            const newGrid = [];
+            
+            // CCW:
+            // 1 2
+            // 3 4
+            // ->
+            // 2 4
+            // 1 3
+            //
+            // New Col 0: [2, 4] (Old Row 0 [1, 2] -> 2 is at index 1... wait)
+            // Actually CCW is:
+            // New Col 0 = Old Row 0 (Reversed? No)
+            // Let's look at logic:
+            // Iterate r from 0 to maxRows.
+            // newCol = [grid[c].seats[r] for c in reverse order]
+            // r=0: c=1 (2), c=0 (1) -> [2, 1].
+            // r=1: c=1 (4), c=0 (3) -> [4, 3].
+            // Grid: [2, 1], [4, 3].
+            // Visual:
+            // 2 4
+            // 1 3
+            // Correct.
+            
+            for (let r = 0; r < maxRows; r++) {
+                const newColSeats = [];
+                for (let c = grid.length - 1; c >= 0; c--) {
+                    const seat = (r < grid[c].seats.length) ? grid[c].seats[r] : null;
+                    newColSeats.push(seat);
+                }
+                newGrid.push({
+                    label: `第${r + 1}排`,
+                    seats: newColSeats
+                });
+            }
+            return newGrid;
+        }
+
         function renderGridToDOM(grid) {
             const container = document.getElementById('classroomLayout');
             container.innerHTML = '';
@@ -688,7 +752,6 @@
                 colData.seats.forEach(seat => {
                     if (seat) {
                         const s = createSeat(seat.id, seat.name);
-                        // 恢復 view-transition-name
                         if (seat.vName) s.style.viewTransitionName = seat.vName;
                         div.appendChild(s);
                     } else {
@@ -701,65 +764,25 @@
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
                 inp.value = colData.label; 
-                inp.style.viewTransitionName = `col-label-${idx+1}`; // 簡單重分配 ID
+                inp.style.viewTransitionName = `col-label-${idx+1}`; 
                 div.appendChild(inp);
                 container.appendChild(div);
             });
         }
 
-        // 觸發視角變更 (包含轉置邏輯)
         function triggerViewChange() {
             const isStudent = viewToggle.checked;
+            const currentGrid = getGridFromDOM();
             
             if (isStudent) {
-                // 轉為學生視角：執行轉置
+                // 轉為學生視角：順時針 90 度
                 seatingContainer.classList.add('student-view');
-                const currentGrid = getGridFromDOM();
-                const newGrid = transposeGrid(currentGrid);
+                const newGrid = transposeGridClockwise(currentGrid);
                 renderGridToDOM(newGrid);
             } else {
-                // 轉回老師視角：執行反向轉置 (其實邏輯一樣，只是因為 reverse 的關係，需要反操作)
-                // 為了簡化，我們可以重新讀取 DOM 再轉一次 (Transpose + Reverse of Transpose + Reverse = Original? No)
-                // 其實最簡單的是：每次切換都執行同樣的 Transpose + Reverse 邏輯，
-                // 因為 (Rotate 90) x 4 = Original. 
-                // 但使用者只有兩個開關。
-                // 為了保證資料不亂，我們其實應該只在 "Teacher -> Student" 時轉置。
-                // "Student -> Teacher" 時，我們需要 "逆轉置"。
-                // 逆操作：Reverse columns, then Transpose.
-                
+                // 轉回老師視角：逆時針 90 度 (還原)
                 seatingContainer.classList.remove('student-view');
-                
-                const currentGrid = getGridFromDOM();
-                
-                // Reverse first (Undo the reverse)
-                const unReversedGrid = currentGrid.map(col => {
-                    return {
-                        label: col.label,
-                        seats: [...col.seats].reverse()
-                    };
-                });
-                
-                // Transpose back
-                // Transpose logic is symmetrical if square, but generic transpose swaps rows/cols.
-                // We use the same transpose logic loop.
-                
-                // Simple generic transpose again
-                let maxRows = 0;
-                unReversedGrid.forEach(c => maxRows = Math.max(maxRows, c.seats.length));
-                const restoredGrid = [];
-                
-                for(let r=0; r<maxRows; r++) {
-                    const newSeats = [];
-                    for(let c=0; c<unReversedGrid.length; c++) {
-                        const seat = (r < unReversedGrid[c].seats.length) ? unReversedGrid[c].seats[r] : null;
-                        newSeats.push(seat);
-                    }
-                    restoredGrid.push({
-                        label: `第${r+1}排`,
-                        seats: newSeats
-                    });
-                }
-                
+                const restoredGrid = transposeGridCounterClockwise(currentGrid);
                 renderGridToDOM(restoredGrid);
             }
         }
@@ -969,7 +992,6 @@
             const s=document.createElement('div'); s.className='seat-box';
             s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             s.onclick=function(){ if(this.classList.contains('empty')) addNewStudent(this); };
-            // V9.14: 綁定 view-transition-name
             if(n) s.style.viewTransitionName = 'seat-' + n;
             enableDragAndDrop(s); return s;
         }
@@ -1058,14 +1080,18 @@
                 c.appendChild(col);
             }
         }
+        
         function openModal(){ 
             const modal = document.getElementById('modal');
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value=students.map(s=>`${s.id} ${s.name}`).join('\n'); 
+            
+            // 自動聚焦並全選
             textarea.focus();
             textarea.select();
         }
+        
         function closeModal(){ document.getElementById('modal').style.display='none'; }
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
