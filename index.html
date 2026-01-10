@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ExamDashboard</title> <!-- v9.19 (統一右上角標籤版) -->
+    <title>監考儀表板 v9.20 (修正文字切邊)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -195,7 +195,7 @@
         }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
-        /* --- 出勤卡 (V9.19 修改) --- */
+        /* --- 出勤卡 (V9.20 修正切邊) --- */
         .attendance-card { 
             background-color: var(--c-red); border: 2px solid var(--c-grey);
             border-radius: 16px; 
@@ -208,11 +208,12 @@
         .att-box { 
             flex: 1; display: flex; flex-direction: column; 
             align-items: flex-end; /* 內容靠右對齊 */
-            justify-content: flex-start; /* 內容從上方開始 (標籤置頂) */
-            padding: 8px 12px; /* 增加內距，讓右上角標籤好看一點 */
+            justify-content: flex-start; 
+            padding: 8px 12px; 
             background: rgba(255, 255, 255, 0.95); border-radius: 10px;
             border: 1px solid rgba(0,0,0,0.1);
             gap: 0; 
+            overflow: hidden; /* 防止超出圓角 */
         }
         .att-box:last-child { flex: 1.8; gap: 5px; }
         
@@ -220,7 +221,7 @@
             font-size: 1.2rem; font-weight: 900; 
             width: 100%; text-align: right; color: var(--c-grey); 
             transition: font-size 0.2s, margin 0.2s; 
-            margin-bottom: 0; /* 標籤貼頂 */
+            margin-bottom: 0; 
             line-height: 1.1; 
         }
         .att-val { 
@@ -228,9 +229,9 @@
             background: transparent; border: none; text-align: right; 
             width: 100%; outline: none; color: var(--c-grey); 
             padding: 0; margin: 0; 
-            /* 讓數字在剩餘空間垂直置中 */
-            margin-top: auto;
-            margin-bottom: auto;
+            /* 修正：增加右側內距，防止文字被切掉 */
+            padding-right: 5px; 
+            margin-top: auto; margin-bottom: auto;
             transition: font-size 0.2s;
             line-height: 1.1;
             cursor: text;
@@ -243,15 +244,16 @@
             font-size: 1.1rem; line-height: 1.4; 
             border: 2px dashed #ccc; border-radius: 8px; 
             transition: height 0.2s; 
-            margin-top: 5px; /* 與標籤的間距 */
-            margin-bottom: 0; 
+            margin-top: 5px; 
+            /* 修正：增加內部 padding，讓文字不要貼著虛線 */
+            padding: 5px 8px; 
         }
         
         .attendance-card.compact .att-box { padding: 4px; }
         .attendance-card.compact .att-label { font-size: 0.9rem; }
         .attendance-card.compact .att-val { font-size: 1.8rem; }
         .attendance-card.compact .att-label-long { font-size: 0.8rem; }
-        .attendance-card.compact textarea.att-val { border-width: 1px; font-size: 1rem; margin-top: 2px; }
+        .attendance-card.compact textarea.att-val { border-width: 1px; font-size: 1rem; margin-top: 2px; padding: 2px 5px; }
 
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
 
