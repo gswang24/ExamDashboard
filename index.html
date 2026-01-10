@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>監考儀表板 v9.22 (完美修正切邊與跳動)</title>
+    <title>ExamDashboard</title> <!--監考儀表板 v9.33 (無箭頭/水平垂直置中版)-->
     <style>
         :root {
             --c-grey:   #231F20;
@@ -21,8 +21,19 @@
         ::view-transition-group(*) {
             animation-duration: 0.5s;
         }
-        .col-label-input {
+        .seat-num, .seat-name, .seat-close, .col-label-input {
             view-transition-name: none !important;
+        }
+
+        /* 隱藏 Chrome, Safari, Edge, Opera 的數字輸入框箭頭 */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* 隱藏 Firefox 的數字輸入框箭頭 */
+        input[type=number] {
+            -moz-appearance: textfield;
         }
 
         *, *::before, *::after {
@@ -44,7 +55,6 @@
             position: fixed; width: 100%;
         }
 
-        /* 全螢幕模式 */
         body:fullscreen, body:-webkit-full-screen {
             padding: 0; 
             background-color: var(--c-grey);
@@ -109,10 +119,16 @@
         .flip-clock-container { display: flex; gap: 10px; align-items: center; justify-content: center; transition: gap 0.2s; }
         
         .flip-unit {
-            position: relative; width: 100px; height: 90px; perspective: 400px;
+            position: relative; 
+            width: 115px; 
+            height: 90px; 
+            perspective: 400px;
             background-color: var(--clock-bg); border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: 'Courier New', monospace;
-            font-weight: 800; font-size: 4.5rem; line-height: 90px; color: var(--clock-text); text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+            font-family: 'Courier New', monospace;
+            font-weight: 800; 
+            font-size: 4.2rem;
+            line-height: 90px; color: var(--clock-text); text-align: center;
             transition: width 0.2s, height 0.2s, font-size 0.2s, line-height 0.2s;
         }
         .flip-top, .flip-bottom { position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden; background-color: var(--clock-bg); }
@@ -150,7 +166,7 @@
         .header-row.compact .clock-card, .header-row.compact .status-card { padding: 4px; }
         .header-row.compact .clock-label { font-size: 1.2rem; margin-bottom: 2px; }
         .header-row.compact .clock-date { font-size: 0.9rem; margin-bottom: 4px; display: none; }
-        .header-row.compact .flip-unit { width: 50px; height: 45px; font-size: 2.2rem; line-height: 45px; border-radius: 4px; }
+        .header-row.compact .flip-unit { width: 60px; height: 50px; font-size: 2.0rem; line-height: 50px; border-radius: 4px; }
         .header-row.compact .flip-sep { font-size: 2rem; padding-bottom: 5px; }
         .header-row.compact .status-label { font-size: 1.2rem; margin-bottom: 0; }
         .header-row.compact .status-time { font-size: 3.5rem; }
@@ -195,65 +211,94 @@
         }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
-        /* --- 出勤卡 (V9.22 完美修正切邊) --- */
+        /* --- 出勤卡 (v9.33 無箭頭/置中版) --- */
         .attendance-card { 
-            background-color: var(--c-red); border: 2px solid var(--c-grey);
+            background-color: var(--c-grey);
+            border: 2px solid var(--c-grey);
             border-radius: 16px; 
             height: 180px; 
             min-height: 60px;
             flex-shrink: 0; display: flex; overflow: hidden; 
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15);
             padding: 5px; gap: 5px; transition: height 0.1s;
+            container-type: inline-size;
         }
+        
         .att-box { 
-            flex: 1; display: flex; flex-direction: column; 
-            align-items: flex-end; /* 內容靠右對齊 */
-            justify-content: flex-start; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
             padding: 8px;
-            /* 修正關鍵：用父容器的 padding 來擠開空間，而非 padding-right 在 input 上 */
-            padding-right: 15px; 
-            background: rgba(255, 255, 255, 0.95); border-radius: 10px;
-            border: 1px solid rgba(0,0,0,0.1);
-            gap: 0; 
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.1); 
+            background: rgba(255, 255, 255, 0.05);
             overflow: hidden; 
+            position: relative;
         }
-        .att-box:last-child { flex: 1.8; gap: 5px; }
+        
+        .att-box:nth-child(1) { border-color: var(--c-teal); background: rgba(126, 189, 194, 0.1); }
+        .att-box:nth-child(1) .att-val { color: var(--c-teal); }
+
+        .att-box:nth-child(2) { border-color: var(--c-yellow); background: rgba(243, 223, 162, 0.1); }
+        .att-box:nth-child(2) .att-val { color: var(--c-yellow); }
+
+        .att-box:nth-child(3) { flex: 1.8; border-color: var(--c-red); background: rgba(187, 68, 48, 0.1); }
         
         .att-label { 
-            font-size: 1.2rem; font-weight: 900; 
-            width: 100%; text-align: right; color: var(--c-grey); 
-            transition: font-size 0.2s, margin 0.2s; 
-            margin-bottom: 0; 
-            line-height: 1.1; 
-        }
-        .att-val { 
-            font-size: 3.5rem; font-weight: 800; 
-            background: transparent; border: none; text-align: right; 
-            width: 100%; outline: none; color: var(--c-grey); 
-            padding: 0; margin: 0; 
-            /* 修正：輸入框本身無內距，完全依賴容器的 padding-right */
-            padding-right: 0; 
-            margin-top: auto; margin-bottom: auto;
-            transition: font-size 0.2s;
-            line-height: 1.1;
-            cursor: text;
-        }
-
-        .att-label-long { font-size: 1.0rem; white-space: nowrap; }
-        /* 未到號碼輸入框 */
-        textarea.att-val { 
-            resize: none; height: 100%; width: 100%;
-            font-size: 1.1rem; line-height: 1.4; 
-            border: 2px dashed #ccc; border-radius: 8px; 
-            transition: height 0.2s; 
-            margin-top: 5px; 
-            padding: 5px 8px; 
+            font-size: 1.2rem; 
+            font-weight: 900; 
+            width: 100%; 
+            text-align: left; 
+            color: #ccc; 
+            margin: 0;
+            line-height: 1;
+            flex-shrink: 0; 
         }
         
-        .attendance-card.compact .att-box { padding: 4px 8px; }
+        .att-val { 
+            /* cqi 單位確保數字夠大 */
+            font-size: clamp(2rem, 11cqi, 4.5rem); 
+            font-weight: 800; 
+            background: transparent; border: none; 
+            
+            /* 修改：水平置中，取消右側留白 */
+            text-align: center; 
+            padding: 0;
+            
+            outline: none; 
+            margin: 0;
+            
+            /* 垂直置中 */
+            margin-top: auto; 
+            margin-bottom: auto;
+            
+            width: 100%;
+            box-sizing: border-box; 
+            line-height: 1;
+        }
+
+        textarea.att-val { 
+            resize: none; 
+            height: auto;
+            flex-grow: 1; 
+            width: 100%;
+            font-size: clamp(1rem, 5cqi, 1.3rem); 
+            line-height: 1.4; 
+            border: 2px dashed rgba(187, 68, 48, 0.5);
+            border-radius: 8px; 
+            margin-top: 5px; 
+            margin-bottom: 0;
+            padding: 5px 8px; 
+            color: #ff5252; 
+            font-weight: bold;
+            background: rgba(0,0,0,0.2);
+            text-align: left; /* 文字輸入框維持靠左 */
+        }
+        textarea.att-val::placeholder { color: rgba(255,255,255,0.3); font-weight: normal; }
+        
+        .attendance-card.compact .att-box { padding: 4px; }
         .attendance-card.compact .att-label { font-size: 0.9rem; }
-        .attendance-card.compact .att-val { font-size: 1.8rem; }
-        .attendance-card.compact .att-label-long { font-size: 0.8rem; }
+        .attendance-card.compact .att-val { font-size: clamp(1.5rem, 10cqi, 3.5rem); }
         .attendance-card.compact textarea.att-val { border-width: 1px; font-size: 1rem; margin-top: 2px; padding: 2px 5px; }
 
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
@@ -381,11 +426,7 @@
             z-index: 10;
         }
 
-        /* 學生視角：講臺移到上方 */
-        .seating-container.student-view .podium {
-            order: 0; 
-            margin-bottom: 10px;
-        }
+        .seating-container.student-view .podium { order: 0; margin-bottom: 10px; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(35, 31, 32, 0.7); display: none; align-items: center; justify-content: center; z-index: 2500; backdrop-filter: blur(2px); }
         .modal { background: #fff; padding: 25px; border-radius: 16px; width: 450px; border: 4px solid var(--c-grey); box-shadow: 8px 8px 0px var(--c-yellow); }
@@ -462,16 +503,16 @@
 
             <div class="attendance-card" id="attendanceCard">
                 <div class="att-box">
-                    <div class="att-label" style="color:#231F20">應到</div>
-                    <input type="number" class="att-val" value="0" style="color:#231F20" onfocus="this.select()">
+                    <div class="att-label">應到</div>
+                    <input type="number" class="att-val" value="0" onfocus="this.select()">
                 </div>
                 <div class="att-box">
-                    <div class="att-label" style="color:#7EBDC2">實到</div>
-                    <input type="number" class="att-val" value="0" style="color:#7EBDC2" onfocus="this.select()">
+                    <div class="att-label">實到</div>
+                    <input type="number" class="att-val" value="0" onfocus="this.select()">
                 </div>
                 <div class="att-box">
-                    <div class="att-label att-label-long" style="color:#BB4430">未到學生號碼</div>
-                    <textarea class="att-val" style="color:#BB4430; font-size:1.5rem;" placeholder="輸入" onfocus="this.select()"></textarea>
+                    <div class="att-label">未到號碼</div>
+                    <textarea class="att-val" placeholder="無" onfocus="this.select()"></textarea>
                 </div>
             </div>
         </div>
@@ -521,7 +562,7 @@
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h3>編輯學生名單</h3>
-            <p style="color:var(--c-grey); font-size:0.9rem;">每行格式：<strong>座號 姓名</strong> (中間請用空格)</p>
+            <p style="color:var(--c-grey); font-size:0.9rem;">提示：若為「<strong>1 王小明</strong>」格式，會填入座號；若僅貼上「<strong>王小明</strong>」，座號欄將自動留空。</p>
             <textarea id="studentListInput" placeholder="例如：
 1 王小明
 2 李大華"></textarea>
@@ -591,13 +632,10 @@
         function setDirection(isRight) {
             if (dirToggle.checked === isRight) return;
             dirToggle.checked = isRight;
-            
-            // 單純切換左起/右起時，只更新標籤，不影響老師/學生視角開關
             updateColumnLabels();
         }
 
         viewToggle.addEventListener('change', () => {
-            // 手動點擊開關時，也觸發連動
             dirToggle.checked = !dirToggle.checked;
             document.startViewTransition(() => {
                 triggerViewChangeLogic();
@@ -619,9 +657,7 @@
                         if (seat.classList.contains('empty')) return null;
                         const num = seat.querySelector('.seat-num').innerText;
                         const name = seat.querySelector('.seat-name').innerText;
-                        const style = seat.getAttribute('style') || '';
-                        const match = style.match(/view-transition-name:\s*([^;]+)/);
-                        const vName = match ? match[1] : '';
+                        const vName = seat.style.viewTransitionName || '';
                         return { id: num, name: name, vName: vName };
                     })
                 };
@@ -702,7 +738,7 @@
             });
         }
 
-        // --- Resizer 邏輯 (v9.22 修正跳動) ---
+        // --- Resizer 邏輯 (修正跳動) ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -712,13 +748,12 @@
                 let startPos = 0, startSize = 0;
 
                 const onStart = (e) => {
-                    if (e.type === 'touchstart') { /* e.preventDefault(); */ }
+                    if (e.type === 'touchstart') { }
                     
                     startPos = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     const rect = target.getBoundingClientRect();
                     startSize = direction === 'width' ? rect.width : rect.height;
                     
-                    // 修正關鍵：先鎖定當前尺寸，再移除 flex
                     if (direction === 'width') {
                         target.style.width = startSize + 'px';
                     } else {
@@ -824,8 +859,15 @@
                 t = t.closest('.seat-box');
                 if(t && t!==dragItem) {
                     const srcH=dragItem.innerHTML, srcC=dragItem.className;
+                    const srcV=dragItem.style.viewTransitionName; 
+                    const tgtV=t.style.viewTransitionName;
+
                     dragItem.innerHTML=t.innerHTML; dragItem.className=t.className;
+                    dragItem.style.viewTransitionName = tgtV;
+
                     t.innerHTML=srcH; t.className=srcC;
+                    t.style.viewTransitionName = srcV;
+
                     updateStudentsFromDOM();
                 }
             }
@@ -850,10 +892,8 @@
             const now = new Date(Date.now()+timeOffset);
             const days=['日','一','二','三','四','五','六'];
             document.getElementById('clockDate').textContent = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} 星期${days[now.getDay()]}`;
-            
             updateFlipUnit('flipH', now.getHours());
             updateFlipUnit('flipM', now.getMinutes());
-            
             checkSchedule(now);
         }
         function checkSchedule(now){
@@ -907,10 +947,19 @@
             const s=document.createElement('div'); s.className='seat-box';
             s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             s.onclick=function(){ if(this.classList.contains('empty')) addNewStudent(this); };
-            if(n) s.style.viewTransitionName = 'seat-' + n;
+            if(n) {
+                s.style.viewTransitionName = 'seat-' + n;
+            } else if (nm) {
+                s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
+            }
             enableDragAndDrop(s); return s;
         }
-        function convertToEmpty(el){ el.className='seat-box empty'; el.innerHTML='<div class="add-sign">+</div>'; el.style.viewTransitionName = ''; updateStudentsFromDOM(); }
+        function convertToEmpty(el){ 
+            el.className='seat-box empty'; 
+            el.innerHTML='<div class="add-sign">+</div>'; 
+            el.style.viewTransitionName = ''; 
+            updateStudentsFromDOM(); 
+        }
         function addNewStudent(el){
             const n=prompt("座號"), nm=prompt("姓名");
             if(!n||!nm)return;
@@ -973,7 +1022,9 @@
                     if(idx<pool.length){ 
                         const p=pool[idx++]; s.className='seat-box'; 
                         s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${p.id}</div><div class="seat-name">${p.name}</div>`; 
-                        s.style.viewTransitionName = 'seat-' + p.id;
+                        
+                        if (p.id) s.style.viewTransitionName = 'seat-' + p.id;
+                        else s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(p.name)).replace(/[^a-zA-Z0-9]/g, '');
                     }
                     else convertToEmpty(s);
                 })});
@@ -1006,16 +1057,27 @@
             const modal = document.getElementById('modal');
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
-            textarea.value=students.map(s=>`${s.id} ${s.name}`).join('\n'); 
+            textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
             textarea.focus();
             textarea.select();
         }
         
         function closeModal(){ document.getElementById('modal').style.display='none'; }
+        
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
-            const arr=val.split('\n').map(x=>{ x=x.trim(); if(!x)return null; const p=x.split(/\s+/); return {id:p[0],name:p.slice(1).join(' ')||p[0]}; }).filter(x=>x);
-            if(arr.length){ refillSeating(arr); closeModal(); } else alert("空");
+            const arr=val.split('\n').map(x=>{ 
+                x=x.trim(); 
+                if(!x) return null; 
+                const match = x.match(/^(\d+)[\s\.\,\、\t]+(.+)$/);
+                if (match) {
+                    return { id: match[1], name: match[2].trim() };
+                } else {
+                    return { id: "", name: x };
+                }
+            }).filter(x=>x);
+
+            if(arr.length){ refillSeating(arr); closeModal(); } else alert("名單為空");
         }
 
         setInterval(updateClock, 1000);
