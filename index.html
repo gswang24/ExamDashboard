@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ExamDashboard</title> <!--監考儀表板 v9.35 (全螢幕+動畫修復版)-->
+    <title>ExamDashboard</title> <!--監考儀表板 v9.36 (科目輸入優化版)-->
     <style>
         :root {
             --c-grey:   #231F20;
@@ -21,7 +21,7 @@
         ::view-transition-group(*) {
             animation-duration: 0.5s;
         }
-        /* 僅排除標籤輸入框的動畫，確保座位本身(seat-box)與內部文字(num/name)都有動畫 */
+        /* 僅排除標籤輸入框的動畫 */
         .col-label-input {
             view-transition-name: none !important;
         }
@@ -465,7 +465,7 @@
             <div class="subject-list" id="subjectList">
                 <div class="subject-item">
                     <div class="subject-header">
-                        <input type="text" class="subject-input" value="生物">
+                        <input type="text" class="subject-input" value="生物" onfocus="this.select()">
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
@@ -476,7 +476,7 @@
                 </div>
                 <div class="subject-item">
                     <div class="subject-header">
-                        <input type="text" class="subject-input" value="理化">
+                        <input type="text" class="subject-input" value="理化" onfocus="this.select()">
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
@@ -746,7 +746,7 @@
             });
         }
 
-        // --- Resizer 邏輯 ---
+        // --- Resizer 邏輯 (修正跳動) ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -943,8 +943,12 @@
         // --- Subject/Seat Functions ---
         function addSubject(){
             const d=document.createElement('div'); d.className='subject-item';
-            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"></div>`;
+            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="this.select()"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
+            
+            // 新增：自動聚焦並全選
+            const inp = d.querySelector('.subject-input');
+            inp.focus();
         }
         function removeSubject(b){ 
             b.closest('.subject-item').remove(); 
