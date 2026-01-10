@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ExamDashboard</title> <!--監考儀表板 v9.33 (無箭頭/水平垂直置中版)-->
+    <title>ExamDashboard</title> <!--監考儀表板 v9.35 (全螢幕+動畫修復版)-->
     <style>
         :root {
             --c-grey:   #231F20;
@@ -21,17 +21,17 @@
         ::view-transition-group(*) {
             animation-duration: 0.5s;
         }
-        .seat-num, .seat-name, .seat-close, .col-label-input {
+        /* 僅排除標籤輸入框的動畫，確保座位本身(seat-box)與內部文字(num/name)都有動畫 */
+        .col-label-input {
             view-transition-name: none !important;
         }
 
-        /* 隱藏 Chrome, Safari, Edge, Opera 的數字輸入框箭頭 */
+        /* 隱藏數字輸入框箭頭 */
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        /* 隱藏 Firefox 的數字輸入框箭頭 */
         input[type=number] {
             -moz-appearance: textfield;
         }
@@ -119,16 +119,10 @@
         .flip-clock-container { display: flex; gap: 10px; align-items: center; justify-content: center; transition: gap 0.2s; }
         
         .flip-unit {
-            position: relative; 
-            width: 115px; 
-            height: 90px; 
-            perspective: 400px;
+            position: relative; width: 115px; height: 90px; perspective: 400px;
             background-color: var(--clock-bg); border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
-            font-family: 'Courier New', monospace;
-            font-weight: 800; 
-            font-size: 4.2rem;
-            line-height: 90px; color: var(--clock-text); text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); font-family: 'Courier New', monospace;
+            font-weight: 800; font-size: 4.2rem; line-height: 90px; color: var(--clock-text); text-align: center;
             transition: width 0.2s, height 0.2s, font-size 0.2s, line-height 0.2s;
         }
         .flip-top, .flip-bottom { position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden; background-color: var(--clock-bg); }
@@ -211,7 +205,7 @@
         }
         .time-input:focus { border-color: var(--c-grey); background: #fff; outline: none; }
         
-        /* --- 出勤卡 (v9.33 無箭頭/置中版) --- */
+        /* --- 出勤卡 --- */
         .attendance-card { 
             background-color: var(--c-grey);
             border: 2px solid var(--c-grey);
@@ -256,22 +250,14 @@
         }
         
         .att-val { 
-            /* cqi 單位確保數字夠大 */
             font-size: clamp(2rem, 11cqi, 4.5rem); 
             font-weight: 800; 
             background: transparent; border: none; 
-            
-            /* 修改：水平置中，取消右側留白 */
             text-align: center; 
-            padding: 0;
-            
             outline: none; 
-            margin: 0;
-            
-            /* 垂直置中 */
+            padding: 0; margin: 0;
             margin-top: auto; 
             margin-bottom: auto;
-            
             width: 100%;
             box-sizing: border-box; 
             line-height: 1;
@@ -292,7 +278,7 @@
             color: #ff5252; 
             font-weight: bold;
             background: rgba(0,0,0,0.2);
-            text-align: left; /* 文字輸入框維持靠左 */
+            text-align: left;
         }
         textarea.att-val::placeholder { color: rgba(255,255,255,0.3); font-weight: normal; }
         
@@ -431,10 +417,14 @@
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(35, 31, 32, 0.7); display: none; align-items: center; justify-content: center; z-index: 2500; backdrop-filter: blur(2px); }
         .modal { background: #fff; padding: 25px; border-radius: 16px; width: 450px; border: 4px solid var(--c-grey); box-shadow: 8px 8px 0px var(--c-yellow); }
         .modal h3 { margin-top: 0; color: var(--c-grey); }
-        .modal textarea { width: 100%; height: 200px; margin: 15px 0; padding: 10px; border: 2px solid var(--c-grey); border-radius: 8px; font-size: 1rem; }
+        .modal input[type="text"], .modal textarea { width: 100%; margin: 5px 0 15px 0; padding: 10px; border: 2px solid var(--c-grey); border-radius: 8px; font-size: 1rem; }
+        .modal textarea { height: 200px; }
         .modal-footer { text-align: right; gap: 15px; display: flex; justify-content: flex-end; }
         .btn-delete { background: none; border: none; color: #ccc; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
         .btn-delete:hover { color: var(--c-red); transform: scale(1.2); }
+        
+        /* 新增單一學生 Modal 輸入框樣式 */
+        .modal-input { margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -569,6 +559,24 @@
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeModal()">取消</button>
                 <button class="btn btn-main" onclick="saveStudents()">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="singleStudentModal">
+        <div class="modal" style="width: 320px;">
+            <h3>新增學生</h3>
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">座號</label>
+                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">姓名</label>
+                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-sec" onclick="closeSingleStudentModal()">取消</button>
+                <button class="btn btn-main" onclick="confirmAddStudent()">確認</button>
             </div>
         </div>
     </div>
@@ -738,7 +746,7 @@
             });
         }
 
-        // --- Resizer 邏輯 (修正跳動) ---
+        // --- Resizer 邏輯 ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -960,14 +968,53 @@
             el.style.viewTransitionName = ''; 
             updateStudentsFromDOM(); 
         }
+        
+        let targetSeatElement = null; // 暫存目標座位
+
         function addNewStudent(el){
-            const n=prompt("座號"), nm=prompt("姓名");
-            if(!n||!nm)return;
-            el.className='seat-box'; 
-            el.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
-            el.style.viewTransitionName = 'seat-' + n;
-            updateStudentsFromDOM();
+            targetSeatElement = el; // 記錄點擊的格子
+            const modal = document.getElementById('singleStudentModal');
+            document.getElementById('newStudentId').value = ''; // 清空
+            document.getElementById('newStudentName').value = ''; // 清空
+            modal.style.display = 'flex';
+            document.getElementById('newStudentId').focus(); // 自動聚焦
         }
+
+        function closeSingleStudentModal() {
+            document.getElementById('singleStudentModal').style.display = 'none';
+            targetSeatElement = null;
+        }
+
+        function confirmAddStudent() {
+            if (!targetSeatElement) return;
+            const n = document.getElementById('newStudentId').value.trim();
+            const nm = document.getElementById('newStudentName').value.trim();
+            
+            if (!nm) {
+                alert("請輸入姓名！");
+                return;
+            }
+
+            targetSeatElement.className = 'seat-box';
+            targetSeatElement.innerHTML = `<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
+            
+            if (n) {
+                targetSeatElement.style.viewTransitionName = 'seat-' + n;
+            } else {
+                targetSeatElement.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
+            }
+            
+            updateStudentsFromDOM();
+            closeSingleStudentModal();
+        }
+
+        // 綁定 Enter 鍵提交
+        document.getElementById('newStudentId').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('newStudentName').focus();
+        });
+        document.getElementById('newStudentName').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') confirmAddStudent();
+        });
 
         window.deleteSeat = function(e, b) { 
             e.stopPropagation(); 
@@ -1003,7 +1050,9 @@
             document.startViewTransition(() => {
                 s.forEach((x,i)=>{ 
                     x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
-                    x.style.viewTransitionName = 'seat-' + pool[i].id;
+                    
+                    if (pool[i].id) x.style.viewTransitionName = 'seat-' + pool[i].id;
+                    else x.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(pool[i].name)).replace(/[^a-zA-Z0-9]/g, '');
                 });
                 students=pool;
             });
