@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ExamDashboard</title> <!--監考儀表板 v9.36 (科目輸入優化版)-->
+    <title>監考儀表板 v9.37 (ESC鍵關閉視窗版)</title>
     <style>
         :root {
             --c-grey:   #231F20;
@@ -1018,6 +1018,17 @@
         });
         document.getElementById('newStudentName').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') confirmAddStudent();
+        });
+
+        // --- 鍵盤快捷鍵支援 (ESC 關閉視窗) ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('modal');
+                const singleModal = document.getElementById('singleStudentModal');
+                
+                if (modal.style.display === 'flex') closeModal();
+                if (singleModal.style.display === 'flex') closeSingleStudentModal();
+            }
         });
 
         window.deleteSeat = function(e, b) { 
