@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v9.72 (iPad優化版)</title>
+    <title>監考儀表板 v9.74 (原生全螢幕+鍵盤防擋)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -35,7 +35,7 @@
             user-select: none;
         }
 
-        /* --- 輸入框必須允許選取與觸控，iPad 鍵盤才會出來 --- */
+        /* 輸入框允許選取與觸控 */
         input, textarea { 
             -webkit-user-select: text !important; 
             user-select: text !important; 
@@ -57,10 +57,11 @@
             transition: padding 0.3s;
         }
 
-        /* --- 全螢幕樣式 --- */
+        /* --- 原生全螢幕樣式 --- */
         body:fullscreen, body:-webkit-full-screen {
             padding: 0; 
             background-color: var(--c-grey);
+            overflow: hidden; /* 全螢幕時隱藏捲軸 */
         }
         body:fullscreen .clock-card,
         body:fullscreen .status-card,
@@ -71,31 +72,7 @@
             border-width: 0 1px 1px 0; 
         }
 
-        /* --- iOS 模擬全螢幕 --- */
-        body.ios-fullscreen {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            width: 100vw; height: 100dvh;
-            z-index: 9998;
-            background-color: var(--c-grey);
-            padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 10px) 0;
-            margin: 0;
-        }
-        body.ios-fullscreen .clock-card,
-        body.ios-fullscreen .status-card,
-        body.ios-fullscreen .schedule-column .subject-list,
-        body.ios-fullscreen .attendance-card,
-        body.ios-fullscreen .seating-container {
-            border-radius: 0; 
-            border-width: 0 1px 1px 0; 
-        }
-        
-        body.ios-fullscreen #fullscreenBtn {
-            top: calc(5px + env(safe-area-inset-top));
-            right: 5px;
-            padding: 4px 8px;
-        }
-
+        /* 全螢幕按鈕 */
         #fullscreenBtn {
             position: fixed; top: 10px; right: 10px; z-index: 3000;
             background-color: rgba(35, 31, 32, 0.8); color: #fff;
@@ -104,6 +81,10 @@
             transition: 0.2s; backdrop-filter: blur(2px);
         }
         #fullscreenBtn:hover { transform: scale(1.05); background-color: #000; }
+        
+        /* 全螢幕模式下隱藏按鈕 (可選) */
+        body:fullscreen #fullscreenBtn { opacity: 0.3; }
+        body:fullscreen #fullscreenBtn:hover { opacity: 1; }
 
         /* --- Resizer --- */
         .resizer { 
@@ -442,8 +423,11 @@
 
         .seating-container.student-view .podium { order: 0; margin-bottom: 10px; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(35, 31, 32, 0.7); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(2px); }
-        .modal { background: #fff; padding: 25px; border-radius: 16px; width: 450px; border: 4px solid var(--c-grey); box-shadow: 8px 8px 0px var(--c-yellow); }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(35, 31, 32, 0.7); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(2px); transition: all 0.3s ease; }
+        /* 當 modal 有 keyboard-active 類別時，改為靠上對齊 */
+        .modal-overlay.keyboard-active { align-items: flex-start; padding-top: 50px; }
+        
+        .modal { background: #fff; padding: 25px; border-radius: 16px; width: 450px; border: 4px solid var(--c-grey); box-shadow: 8px 8px 0px var(--c-yellow); transition: margin-top 0.3s; }
         .modal h3 { margin-top: 0; color: var(--c-grey); }
         .modal input[type="text"], .modal textarea { width: 100%; margin: 5px 0 15px 0; padding: 10px; border: 2px solid var(--c-grey); border-radius: 8px; font-size: 1rem; }
         .modal textarea { height: 200px; }
@@ -492,24 +476,24 @@
             <div class="subject-list" id="subjectList">
                 <div class="subject-item">
                     <div class="subject-header">
-                        <input type="text" class="subject-input" value="生物" onfocus="this.select()">
+                        <input type="text" class="subject-input" value="生物" onfocus="handleFocus(this)">
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
-                        <input type="text" class="time-input time-start" value="13:20" maxlength="5" placeholder="13:20" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" inputmode="numeric" class="time-input time-start" value="13:20" maxlength="5" placeholder="13:20" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                         <span class="time-sep">~</span>
-                        <input type="text" class="time-input time-end" value="14:10" maxlength="5" placeholder="14:10" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" inputmode="numeric" class="time-input time-end" value="14:10" maxlength="5" placeholder="14:10" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                     </div>
                 </div>
                 <div class="subject-item">
                     <div class="subject-header">
-                        <input type="text" class="subject-input" value="理化" onfocus="this.select()">
+                        <input type="text" class="subject-input" value="理化" onfocus="handleFocus(this)">
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
-                        <input type="text" class="time-input time-start" value="14:20" maxlength="5" placeholder="HH:mm" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" inputmode="numeric" class="time-input time-start" value="14:20" maxlength="5" placeholder="HH:mm" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                         <span class="time-sep">~</span>
-                        <input type="text" class="time-input time-end" value="15:10" maxlength="5" placeholder="HH:mm" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" inputmode="numeric" class="time-input time-end" value="15:10" maxlength="5" placeholder="HH:mm" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                     </div>
                 </div>
                 
@@ -521,15 +505,15 @@
             <div class="attendance-card" id="attendanceCard">
                 <div class="att-box">
                     <div class="att-label">應到</div>
-                    <input type="number" class="att-val" value="0" onfocus="this.select()">
+                    <input type="number" class="att-val" value="0" onfocus="handleFocus(this)">
                 </div>
                 <div class="att-box">
                     <div class="att-label">實到</div>
-                    <input type="number" class="att-val" value="0" onfocus="this.select()">
+                    <input type="number" class="att-val" value="0" onfocus="handleFocus(this)">
                 </div>
                 <div class="att-box">
                     <div class="att-label">未到號碼</div>
-                    <textarea class="att-val" placeholder="無" onfocus="this.select()"></textarea>
+                    <textarea class="att-val" placeholder="無" onfocus="handleFocus(this)"></textarea>
                 </div>
             </div>
         </div>
@@ -582,7 +566,7 @@
             <p style="color:var(--c-grey); font-size:0.9rem;">提示：若為「<strong>1 王小明</strong>」格式，會填入座號；若僅貼上「<strong>王小明</strong>」，座號欄將自動留空。</p>
             <textarea id="studentListInput" placeholder="例如：
 1 王小明
-2 李大華"></textarea>
+2 李大華" onfocus="handleFocus(this)"></textarea>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeModal()">取消</button>
                 <button class="btn btn-main" onclick="saveStudents()">確認</button>
@@ -595,11 +579,11 @@
             <h3>新增學生</h3>
             <div style="margin-bottom: 10px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">座號</label>
-                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1">
+                <input type="text" inputmode="numeric" id="newStudentId" class="modal-input" placeholder="例如：1" onfocus="handleFocus(this)">
             </div>
             <div style="margin-bottom: 20px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">姓名</label>
-                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明">
+                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明" onfocus="handleFocus(this)">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeSingleStudentModal()">取消</button>
@@ -609,6 +593,50 @@
     </div>
 
     <script>
+        // --- 全螢幕 (原生 API) ---
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch((e) => {
+                    console.log("Fullscreen blocked:", e);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // --- 輸入框聚焦 & 防擋邏輯 ---
+        function handleFocus(el) {
+            el.select(); // 原有的選取功能
+            
+            // 延遲執行捲動，等待鍵盤彈出
+            setTimeout(() => {
+                // 1. 一般元素捲動到中央
+                el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                
+                // 2. 如果是在 Modal 內，將 Modal 往上推
+                const modalOverlay = el.closest('.modal-overlay');
+                if(modalOverlay) {
+                    modalOverlay.classList.add('keyboard-active');
+                }
+            }, 300);
+        }
+
+        // 監聽 blur 事件以復原 Modal 位置
+        document.addEventListener('focusout', function(e) {
+            const modalOverlay = e.target.closest('.modal-overlay');
+            if(modalOverlay) {
+                // 稍微延遲確認是否焦點跑到同一個 modal 的其他 input
+                setTimeout(() => {
+                    if(!modalOverlay.contains(document.activeElement)) {
+                        modalOverlay.classList.remove('keyboard-active');
+                    }
+                }, 100);
+            }
+        });
+
+
         // --- 翻頁核心邏輯 ---
         function updateFlipUnit(elementId, newValue) {
             const unit = document.getElementById(elementId);
@@ -908,17 +936,6 @@
         }
 
         // --- Clock & Schedule Logic ---
-        function toggleFullscreen(){ 
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            
-            if (isIOS) {
-                document.body.classList.toggle('ios-fullscreen');
-            } else {
-                if(!document.fullscreenElement) document.documentElement.requestFullscreen(); 
-                else if(document.exitFullscreen) document.exitFullscreen(); 
-            }
-        }
-        
         function formatTimeInput(i){ 
             let v=i.value.replace(/[^0-9:]/g,''); 
             if(!v)return;
@@ -976,9 +993,14 @@
         // --- Subject/Seat Functions ---
         function addSubject(){
             const d=document.createElement('div'); d.className='subject-item';
-            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="this.select()"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"></div>`;
+            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" inputmode="numeric" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" inputmode="numeric" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
-            d.querySelector('.subject-input').focus();
+            
+            // iPad Hack: 延遲聚焦以觸發鍵盤
+            setTimeout(() => {
+                const inp = d.querySelector('.subject-input');
+                if(inp) inp.focus();
+            }, 300);
         }
         function removeSubject(b){ 
             b.closest('.subject-item').remove(); 
@@ -1011,11 +1033,16 @@
             document.getElementById('newStudentId').value = ''; 
             document.getElementById('newStudentName').value = ''; 
             modal.style.display = 'flex';
-            document.getElementById('newStudentId').focus(); 
+            
+            // iPad Hack: 延遲聚焦以觸發鍵盤
+            setTimeout(() => {
+                document.getElementById('newStudentId').focus();
+            }, 300);
         }
 
         function closeSingleStudentModal() {
             document.getElementById('singleStudentModal').style.display = 'none';
+            document.getElementById('singleStudentModal').classList.remove('keyboard-active');
             targetSeatElement = null;
         }
 
@@ -1058,12 +1085,11 @@
             }
         });
         
-        // --- 新增：點擊遮罩關閉視窗 (for iPad) ---
+        // --- 點擊遮罩關閉視窗 (for iPad) ---
         ['modal', 'singleStudentModal'].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
                 el.addEventListener('click', function(e) {
-                    // 如果點擊的目標正是遮罩本身 (而不是內部的 modal 內容)
                     if (e.target === this) {
                         if(id === 'modal') closeModal();
                         else closeSingleStudentModal();
@@ -1161,11 +1187,14 @@
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
-            textarea.focus();
-            textarea.select();
+            setTimeout(() => textarea.focus(), 100);
         }
         
-        function closeModal(){ document.getElementById('modal').style.display='none'; }
+        function closeModal(){ 
+            const modal = document.getElementById('modal');
+            modal.style.display='none'; 
+            modal.classList.remove('keyboard-active');
+        }
         
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
