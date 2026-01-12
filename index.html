@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.6</title>
+    <title>監考儀表板 v0102.7</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -630,12 +630,13 @@
 
         // --- 輸入框聚焦邏輯 ---
         function handleFocus(el) {
+            // 這個 function 綁定在 subject/attendance input 上
+            // 這些通常只有單行，全選沒有問題
             el.focus();
-            if (el.tagName.toLowerCase() !== 'textarea') {
-                el.select();
-            }
-            // 一般輸入框(非Modal內)延遲捲動
             setTimeout(() => {
+                if (el.tagName.toLowerCase() !== 'textarea') {
+                    el.select();
+                }
                 el.scrollIntoView({behavior: 'smooth', block: 'center'});
             }, 300);
         }
@@ -839,8 +840,13 @@
                     
                     if (newSize > 40) { 
                         if (direction === 'width') {
+                            const parentWidth = target.parentElement.clientWidth;
+                            // 限制最大寬度，保留右側至少 220px (status-card min-width 200px + gap)
+                            const maxWidth = parentWidth - 220; 
+                            if (newSize > maxWidth) newSize = maxWidth;
+                            
                             target.style.width = newSize+'px';
-                        } else { 
+                        } else {
                             target.style.height = newSize+'px'; 
                         }
                     }
@@ -1213,14 +1219,13 @@
             modal.style.display='flex'; 
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
             
-            // 重點修正：延遲執行聚焦，給予瀏覽器渲染時間，並確保精確選取文字
+            // 延遲聚焦與選取，給予瀏覽器反應時間，確保全選文字
             setTimeout(() => {
                 textarea.focus();
-                // 使用 setSelectionRange(0, length) 確保只選取文字，且不會觸發容器級別的選取
+                // 針對iPad優化：精確選取文字範圍
                 textarea.setSelectionRange(0, textarea.value.length);
-                // 捲動到頂部
                 textarea.scrollTop = 0;
-            }, 300); 
+            }, 300);
         }
         
         function closeModal(){ 
