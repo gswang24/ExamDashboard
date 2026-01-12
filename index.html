@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.1</title>
+    <title>監考儀表板 v0102.3</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -21,17 +21,20 @@
         }
 
         /* --- 動畫控制區 --- */
+        /* 加快速度至 0.3s (原本 0.8s) */
         ::view-transition-group(*) { 
             animation-duration: 0.3s; 
             animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
         }
         
+        /* 移除整頁的淡入淡出（所謂的關機/閃爍特效） */
         ::view-transition-old(root), 
         ::view-transition-new(root) {
             animation: none;
             mix-blend-mode: normal;
         }
 
+        /* 避免非移動物件參與動畫 */
         .col-label-input, .podium { view-transition-name: none !important; }
 
         input[type=number]::-webkit-outer-spin-button,
@@ -77,6 +80,7 @@
             border-width: 0 1px 1px 0; 
         }
 
+        /* 右上角按鈕 */
         #fullscreenBtn {
             position: fixed; top: 10px; right: 10px; z-index: 3000;
             background-color: rgba(35, 31, 32, 0.8); color: #fff;
@@ -88,6 +92,7 @@
         body:fullscreen #fullscreenBtn { opacity: 0.3; }
         body:fullscreen #fullscreenBtn:hover { opacity: 1; }
 
+        /* 左上角版本號 */
         .version-tag {
             position: fixed; top: 12px; left: 15px; z-index: 3000;
             color: var(--c-grey); font-weight: 900; font-size: 0.9rem;
@@ -154,6 +159,7 @@
         .flip-leaf-front span { position: absolute; top: 0; left: 0; width: 100%; height: 200%; display: flex; justify-content: center; align-items: center; }
         .flip-leaf-back span { position: absolute; top: -100%; left: 0; width: 100%; height: 200%; display: flex; justify-content: center; align-items: center; }
         
+        /* 翻頁動畫也加速 */
         .flip-unit.flipping .flip-leaf-front { animation: flipDownFront 0.4s ease-in-out forwards; } 
         .flip-unit.flipping .flip-leaf-back { animation: flipDownBack 0.4s ease-in-out forwards; } 
         @keyframes flipDownFront { 0% { transform: rotateX(0deg); } 100% { transform: rotateX(-180deg); } }
@@ -175,6 +181,7 @@
         .status-card.urgent .status-time { color: var(--c-red); }
         .progress-bg { position: absolute; left: 0; bottom: 0; top: 0; width: 0%; background-color: rgba(243, 223, 162, 0.5); transition: width 1s linear; z-index: 1; }
 
+        /* 自適應緊湊模式 */
         .header-row.compact .clock-card, .header-row.compact .status-card { padding: 4px; }
         .header-row.compact .clock-label { font-size: 1.2rem; margin-bottom: 2px; }
         .header-row.compact .clock-date { font-size: 0.9rem; margin-bottom: 4px; display: none; }
@@ -190,7 +197,7 @@
         }
         
         .schedule-column { 
-            /* 修改：改為 flex: 1，搭配右側 3.5，達成 1:3.5 比例 */
+            /* 修改：設定 flex: 1，配合右側 3.5 */
             flex: 1; 
             min-width: 250px; 
             display: flex; flex-direction: column; 
@@ -310,7 +317,7 @@
 
         /* --- 座位表容器 --- */
         .seating-container {
-            /* 修改： flex 設為 3.5 */
+            /* 修改：設定 flex: 3.5 */
             flex: 3.5; 
             background-color: var(--c-linen);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -465,7 +472,7 @@
 </head>
 <body>
 
-    <div class="version-tag">v0102.1</div>
+    <div class="version-tag">v0102.3</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -1201,8 +1208,11 @@
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
             setTimeout(() => {
                 textarea.focus();
-                // 修改：使用 setSelectionRange 替代 select()，解決 iPad 全選外框問題
+                
+                // 修正：針對 iPad 使用 setSelectionRange 來選取內容，避免選到整個框
                 textarea.setSelectionRange(0, textarea.value.length);
+                
+                // 確保滾動到頂部，讓內容可見
                 textarea.scrollTop = 0;
             }, 50);
         }
