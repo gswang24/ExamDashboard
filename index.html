@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v9.9 (鍵盤與焦點修正)</title>
+    <title>監考儀表板 v9.9.1 (iPad適配版)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -20,7 +20,13 @@
             --gap-size: 14px;
         }
 
-        ::view-transition-group(*) { animation-duration: 0.5s; }
+        /* 限制 View Transition 只作用於座位表相關，避免影響 Modal */
+        ::view-transition-group(.seat-box), 
+        ::view-transition-group(.seat-num), 
+        ::view-transition-group(.seat-name) { 
+            animation-duration: 0.5s; 
+        }
+
         .col-label-input { view-transition-name: none !important; }
 
         input[type=number]::-webkit-outer-spin-button,
@@ -422,7 +428,6 @@
         .seating-container.student-view .podium { order: 0; margin-bottom: 10px; }
 
         /* --- Modal 相關修正 --- */
-        /* 移除 transition 避免抖動 */
         .modal-overlay { 
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background: rgba(35, 31, 32, 0.7); 
@@ -430,14 +435,20 @@
             align-items: center; 
             justify-content: center; 
             z-index: 10000; 
-            backdrop-filter: blur(2px); 
+            /* 修正：移除所有動畫與過渡 */
+            transition: none !important;
+            animation: none !important;
+            view-transition-name: none !important;
         }
         
         .modal { 
             background: #fff; padding: 25px; border-radius: 16px; width: 450px; 
             border: 4px solid var(--c-grey); 
             box-shadow: 8px 8px 0px var(--c-yellow); 
-            /* 移除 transition 以避免開啟時的抖動 */
+            /* 修正：移除所有動畫與過渡 */
+            transition: none !important;
+            animation: none !important;
+            view-transition-name: none !important;
         }
         
         .modal h3 { margin-top: 0; color: var(--c-grey); }
@@ -618,9 +629,19 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 (僅做選取與捲動至中央，移除撐開高度) ---
+        // --- 輸入框聚焦邏輯 (修正 iPad TextArea 全選問題) ---
         function handleFocus(el) {
-            el.select(); // 選取內容
+            // 判斷是否為觸控裝置
+            const isTouch = (navigator.maxTouchPoints > 0) || ('ontouchstart' in window);
+            const isTextArea = el.tagName.toLowerCase() === 'textarea';
+
+            el.focus(); // 確保聚焦
+            
+            // 如果是電腦版，或者不是多行輸入框，才進行全選
+            // iPad上對 TextArea 全選會導致系統選單遮擋，故 iPad TextArea 不自動全選
+            if (!(isTouch && isTextArea)) {
+                el.select();
+            }
             
             // 延遲執行捲動，等待虛擬鍵盤彈出
             setTimeout(() => {
@@ -676,9 +697,12 @@
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
             dirToggle.checked = !dirToggle.checked;
-            document.startViewTransition(() => {
-                triggerViewChangeLogic();
-            });
+            // 只有座位重排使用 View Transition
+            if (document.startViewTransition) {
+                 document.startViewTransition(() => triggerViewChangeLogic());
+            } else {
+                 triggerViewChangeLogic();
+            }
         }
 
         function setDirection(isRight) {
@@ -689,9 +713,11 @@
 
         viewToggle.addEventListener('change', () => {
             dirToggle.checked = !dirToggle.checked;
-            document.startViewTransition(() => {
-                triggerViewChangeLogic();
-            });
+            if (document.startViewTransition) {
+                 document.startViewTransition(() => triggerViewChangeLogic());
+            } else {
+                 triggerViewChangeLogic();
+            }
         });
 
         dirToggle.addEventListener('change', () => {
@@ -989,13 +1015,12 @@
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" inputmode="numeric" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" inputmode="numeric" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
             
-            // 修正2：強制聚焦並全選文字，確保鍵盤彈出
             const inp = d.querySelector('.subject-input');
             if(inp) {
-                // 使用 setTimeout 確保 DOM 渲染完畢
                 setTimeout(() => {
                     inp.focus();
-                    inp.select();
+                    const isTouch = (navigator.maxTouchPoints > 0) || ('ontouchstart' in window);
+                    if (!isTouch) inp.select(); // 電腦版才全選
                 }, 10);
             }
         }
@@ -1031,12 +1056,12 @@
             document.getElementById('newStudentName').value = ''; 
             modal.style.display = 'flex';
             
-            // 修正1：移除不穩定的延遲，立即聚焦
             const idInput = document.getElementById('newStudentId');
             setTimeout(() => {
                 idInput.focus();
+                // 學生ID輸入框很短，電腦手機都可全選，不影響
                 idInput.select();
-            }, 10); // 10ms 微小延遲確保 display:flex 已生效
+            }, 10); 
         }
 
         function closeSingleStudentModal() {
@@ -1083,7 +1108,6 @@
             }
         });
         
-        // --- 點擊遮罩關閉視窗 (for iPad) ---
         ['modal', 'singleStudentModal'].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
@@ -1127,14 +1151,20 @@
             if(!pool.length)return;
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
             
-            document.startViewTransition(() => {
+            const doShuffle = () => {
                 s.forEach((x,i)=>{ 
                     x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
                     if (pool[i].id) x.style.viewTransitionName = 'seat-' + pool[i].id;
                     else x.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(pool[i].name)).replace(/[^a-zA-Z0-9]/g, '');
                 });
                 students=pool;
-            });
+            };
+
+            if (document.startViewTransition) {
+                document.startViewTransition(doShuffle);
+            } else {
+                doShuffle();
+            }
         }
         function refillSeating(arr){
             let cols=document.querySelectorAll('.seat-column');
@@ -1144,7 +1174,7 @@
             let total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
             while(total<pool.length){ addColumn(); cols=document.querySelectorAll('.seat-column'); total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); }
             
-            document.startViewTransition(() => {
+            const doRefill = () => {
                 let idx=0;
                 cols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
                     if(idx<pool.length){ 
@@ -1156,7 +1186,13 @@
                     else convertToEmpty(s);
                 })});
                 students=pool;
-            });
+            };
+
+            if(document.startViewTransition) {
+                document.startViewTransition(doRefill);
+            } else {
+                doRefill();
+            }
         }
         function generateSeatingInitial(){
             const c=document.getElementById('classroomLayout'); c.innerHTML='';
@@ -1185,7 +1221,12 @@
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
-            setTimeout(() => textarea.focus(), 100);
+            setTimeout(() => {
+                textarea.focus();
+                // 修正：iPad 不全選名單框
+                const isTouch = (navigator.maxTouchPoints > 0) || ('ontouchstart' in window);
+                if (!isTouch) textarea.select();
+            }, 100);
         }
         
         function closeModal(){ 
