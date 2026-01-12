@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.8</title>
+    <title>監考儀表板 v0102.9</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -45,7 +45,7 @@
             user-select: none;
         }
 
-        /* 強制輸入框為文字選取模式 */
+        /* 強制輸入框為文字選取模式，解決部分瀏覽器選取困難 */
         input, textarea { 
             -webkit-user-select: text !important; 
             user-select: text !important; 
@@ -184,6 +184,7 @@
         }
         
         .schedule-column { 
+            /* 1:3.5 比例設定 */
             flex: 1; 
             min-width: 250px; 
             display: flex; flex-direction: column; 
@@ -303,6 +304,7 @@
 
         /* --- 座位表容器 --- */
         .seating-container {
+            /* 1:3.5 比例設定 */
             flex: 3.5; 
             background-color: var(--c-linen);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -628,17 +630,31 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 (修正反應時間) ---
+        // --- 輸入框聚焦邏輯 (修正 Safari 死機與反應速度) ---
         function handleFocus(el) {
-            // 這個 function 綁定在 subject/attendance input 上
-            el.focus();
-            // 從 300ms 改為 50ms，解決電腦版反應遲鈍問題，同時保留手機版緩衝
+            // 1. 【關鍵修正】絕對不要在這裡寫 el.focus()，因為已經觸發 focus 事件了，
+            //    再次呼叫會造成 Safari 無窮迴圈導致當機。
+
+            // 2. 判斷是否為觸控裝置 (iPad/手機)
+            //    iPad 在鍵盤彈出時，如果不給延遲，選取動作會被鍵盤動畫打斷。
+            const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            
+            // 電腦版：幾乎不延遲 (10ms)，達到「秒選」的快感
+            // iPad版：延遲 400ms，等待軟體鍵盤完全彈出後再選取，避免畫面跳動或選取失效
+            const delay = isTouch ? 400 : 10;
+
             setTimeout(() => {
+                // 只有非 textarea 才全選 (避免考勤卡備註被全選誤刪)
                 if (el.tagName.toLowerCase() !== 'textarea') {
                     el.select();
                 }
-                el.scrollIntoView({behavior: 'smooth', block: 'center'});
-            }, 50); 
+                
+                // iPad 上捲動建議用 auto (瞬間跳轉) 避免 smooth (平滑) 與鍵盤動畫衝突
+                el.scrollIntoView({
+                    behavior: isTouch ? 'auto' : 'smooth', 
+                    block: 'center'
+                });
+            }, delay); 
         }
 
         // --- 翻頁核心邏輯 ---
@@ -804,7 +820,7 @@
             });
         }
 
-        // --- Resizer 邏輯 (包含 v0102.7 修正) ---
+        // --- Resizer 邏輯 ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -846,7 +862,7 @@
                             if (newSize > maxWidth) newSize = maxWidth;
                             
                             target.style.width = newSize+'px';
-                        } else {
+                        } else { 
                             target.style.height = newSize+'px'; 
                         }
                     }
@@ -1017,7 +1033,7 @@
                 // 確保輸入框加入時也能正確聚焦並選取
                 setTimeout(() => {
                     inp.select();
-                }, 50);
+                }, 10);
             }
         }
         function removeSubject(b){ 
@@ -1056,6 +1072,7 @@
             setTimeout(() => {
                 const idInput = document.getElementById('newStudentId');
                 idInput.focus();
+                // 避免全選框，只做一般聚焦
             }, 300);
         }
 
@@ -1224,7 +1241,7 @@
                 // 針對iPad優化：精確選取文字範圍
                 textarea.setSelectionRange(0, textarea.value.length);
                 textarea.scrollTop = 0;
-            }, 300);
+            }, 300); 
         }
         
         function closeModal(){ 
