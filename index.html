@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.3</title>
+    <title>監考儀表板 v0102.5</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -21,20 +21,17 @@
         }
 
         /* --- 動畫控制區 --- */
-        /* 加快速度至 0.3s (原本 0.8s) */
         ::view-transition-group(*) { 
             animation-duration: 0.3s; 
             animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
         }
         
-        /* 移除整頁的淡入淡出（所謂的關機/閃爍特效） */
         ::view-transition-old(root), 
         ::view-transition-new(root) {
             animation: none;
             mix-blend-mode: normal;
         }
 
-        /* 避免非移動物件參與動畫 */
         .col-label-input, .podium { view-transition-name: none !important; }
 
         input[type=number]::-webkit-outer-spin-button,
@@ -48,9 +45,10 @@
             user-select: none;
         }
 
+        /* 強制輸入框為文字選取模式 */
         input, textarea { 
-            -webkit-user-select: auto; 
-            user-select: auto; 
+            -webkit-user-select: text !important; 
+            user-select: text !important; 
             cursor: text;
         }
 
@@ -80,7 +78,6 @@
             border-width: 0 1px 1px 0; 
         }
 
-        /* 右上角按鈕 */
         #fullscreenBtn {
             position: fixed; top: 10px; right: 10px; z-index: 3000;
             background-color: rgba(35, 31, 32, 0.8); color: #fff;
@@ -91,14 +88,6 @@
         #fullscreenBtn:hover { transform: scale(1.05); background-color: #000; }
         body:fullscreen #fullscreenBtn { opacity: 0.3; }
         body:fullscreen #fullscreenBtn:hover { opacity: 1; }
-
-        /* 左上角版本號 */
-        .version-tag {
-            position: fixed; top: 12px; left: 15px; z-index: 3000;
-            color: var(--c-grey); font-weight: 900; font-size: 0.9rem;
-            opacity: 0.4; pointer-events: none;
-            font-family: 'Courier New', monospace;
-        }
 
         /* --- Resizer --- */
         .resizer { 
@@ -159,7 +148,6 @@
         .flip-leaf-front span { position: absolute; top: 0; left: 0; width: 100%; height: 200%; display: flex; justify-content: center; align-items: center; }
         .flip-leaf-back span { position: absolute; top: -100%; left: 0; width: 100%; height: 200%; display: flex; justify-content: center; align-items: center; }
         
-        /* 翻頁動畫也加速 */
         .flip-unit.flipping .flip-leaf-front { animation: flipDownFront 0.4s ease-in-out forwards; } 
         .flip-unit.flipping .flip-leaf-back { animation: flipDownBack 0.4s ease-in-out forwards; } 
         @keyframes flipDownFront { 0% { transform: rotateX(0deg); } 100% { transform: rotateX(-180deg); } }
@@ -181,7 +169,6 @@
         .status-card.urgent .status-time { color: var(--c-red); }
         .progress-bg { position: absolute; left: 0; bottom: 0; top: 0; width: 0%; background-color: rgba(243, 223, 162, 0.5); transition: width 1s linear; z-index: 1; }
 
-        /* 自適應緊湊模式 */
         .header-row.compact .clock-card, .header-row.compact .status-card { padding: 4px; }
         .header-row.compact .clock-label { font-size: 1.2rem; margin-bottom: 2px; }
         .header-row.compact .clock-date { font-size: 0.9rem; margin-bottom: 4px; display: none; }
@@ -197,7 +184,6 @@
         }
         
         .schedule-column { 
-            /* 修改：設定 flex: 1，配合右側 3.5 */
             flex: 1; 
             min-width: 250px; 
             display: flex; flex-direction: column; 
@@ -317,7 +303,6 @@
 
         /* --- 座位表容器 --- */
         .seating-container {
-            /* 修改：設定 flex: 3.5 */
             flex: 3.5; 
             background-color: var(--c-linen);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -448,16 +433,21 @@
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background: rgba(35, 31, 32, 0.7); 
             display: none; 
-            align-items: center; 
-            justify-content: center; 
+            align-items: flex-start; /* 靠上對齊，避免鍵盤遮擋 */
+            padding-top: 50px; 
+            overflow-y: auto;        /* 允許滾動 */
             z-index: 10000; 
             backdrop-filter: blur(2px); 
+            -webkit-overflow-scrolling: touch; 
         }
         
         .modal { 
             background: #fff; padding: 25px; border-radius: 16px; width: 450px; 
             border: 4px solid var(--c-grey); 
             box-shadow: 8px 8px 0px var(--c-yellow); 
+            margin: 0 auto 50vh auto; /* 底部預留空間 */
+            flex-shrink: 0;
+            max-width: 90%;
         }
         
         .modal h3 { margin-top: 0; color: var(--c-grey); }
@@ -471,8 +461,6 @@
     </style>
 </head>
 <body>
-
-    <div class="version-tag">v0102.3</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -510,24 +498,24 @@
             <div class="subject-list" id="subjectList">
                 <div class="subject-item">
                     <div class="subject-header">
-                        <input type="text" class="subject-input" value="生物" onfocus="this.select()">
+                        <input type="text" class="subject-input" value="生物" onfocus="handleFocus(this)">
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
-                        <input type="text" class="time-input time-start" value="13:20" maxlength="5" placeholder="13:20" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-start" value="13:20" maxlength="5" placeholder="13:20" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                         <span class="time-sep">~</span>
-                        <input type="text" class="time-input time-end" value="14:10" maxlength="5" placeholder="14:10" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-end" value="14:10" maxlength="5" placeholder="14:10" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                     </div>
                 </div>
                 <div class="subject-item">
                     <div class="subject-header">
-                        <input type="text" class="subject-input" value="理化" onfocus="this.select()">
+                        <input type="text" class="subject-input" value="理化" onfocus="handleFocus(this)">
                         <button class="btn-delete" onclick="removeSubject(this)">×</button>
                     </div>
                     <div class="time-inputs">
-                        <input type="text" class="time-input time-start" value="14:20" maxlength="5" placeholder="HH:mm" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-start" value="14:20" maxlength="5" placeholder="HH:mm" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                         <span class="time-sep">~</span>
-                        <input type="text" class="time-input time-end" value="15:10" maxlength="5" placeholder="HH:mm" onfocus="this.select()" onblur="formatTimeInput(this)">
+                        <input type="text" class="time-input time-end" value="15:10" maxlength="5" placeholder="HH:mm" onfocus="handleFocus(this)" onblur="formatTimeInput(this)">
                     </div>
                 </div>
                 
@@ -539,15 +527,15 @@
             <div class="attendance-card" id="attendanceCard">
                 <div class="att-box">
                     <div class="att-label">應到</div>
-                    <input type="number" class="att-val" value="0" onfocus="this.select()">
+                    <input type="number" class="att-val" value="0" onfocus="handleFocus(this)">
                 </div>
                 <div class="att-box">
                     <div class="att-label">實到</div>
-                    <input type="number" class="att-val" value="0" onfocus="this.select()">
+                    <input type="number" class="att-val" value="0" onfocus="handleFocus(this)">
                 </div>
                 <div class="att-box">
                     <div class="att-label">未到號碼</div>
-                    <textarea class="att-val" placeholder="無" onfocus="this.select()"></textarea>
+                    <textarea class="att-val" placeholder="無" onfocus="handleFocus(this)"></textarea>
                 </div>
             </div>
         </div>
@@ -600,7 +588,7 @@
             <p style="color:var(--c-grey); font-size:0.9rem;">提示：若為「<strong>1 王小明</strong>」格式，會填入座號；若僅貼上「<strong>王小明</strong>」，座號欄將自動留空。</p>
             <textarea id="studentListInput" placeholder="例如：
 1 王小明
-2 李大華" onfocus="this.select()"></textarea>
+2 李大華" onfocus="handleFocus(this)"></textarea>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeModal()">取消</button>
                 <button class="btn btn-main" onclick="saveStudents()">確認</button>
@@ -613,11 +601,11 @@
             <h3>新增學生</h3>
             <div style="margin-bottom: 10px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">座號</label>
-                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1" onfocus="this.select()">
+                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1" onfocus="handleFocus(this)">
             </div>
             <div style="margin-bottom: 20px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">姓名</label>
-                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明" onfocus="this.select()">
+                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明" onfocus="handleFocus(this)">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeSingleStudentModal()">取消</button>
@@ -638,6 +626,28 @@
                     document.exitFullscreen();
                 }
             }
+        }
+
+        // --- 輸入框聚焦邏輯 (修正 iPad 全選與鍵盤遮擋) ---
+        function handleFocus(el) {
+            el.focus();
+            
+            // 如果是名單(textarea)，針對iPad使用精確文字選取
+            if (el.tagName.toLowerCase() === 'textarea') {
+                setTimeout(() => {
+                    // 只選取文字範圍，避免選到容器
+                    el.setSelectionRange(0, el.value.length);
+                }, 10);
+            } else {
+                // 一般輸入框可以直接 select
+                el.select();
+            }
+            
+            // 延遲執行捲動，等待虛擬鍵盤彈出
+            setTimeout(() => {
+                // 捲動元素到畫面中央
+                el.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }, 300);
         }
 
         // --- 翻頁核心邏輯 ---
@@ -1002,13 +1012,16 @@
         function addSubject(){
             const d=document.createElement('div'); 
             d.className='subject-item';
-            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="this.select()"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="this.select()" onblur="formatTimeInput(this)"></div>`;
+            d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
             
             const inp = d.querySelector('.subject-input');
             if(inp) {
                 inp.focus();
-                inp.select(); // 確保電腦版或支援的瀏覽器能全選
+                // 確保輸入框加入時也能正確聚焦並選取
+                setTimeout(() => {
+                    inp.select();
+                }, 10);
             }
         }
         function removeSubject(b){ 
@@ -1044,8 +1057,9 @@
             modal.style.display = 'flex';
             
             const idInput = document.getElementById('newStudentId');
-            idInput.focus();
-            idInput.select();
+            setTimeout(() => {
+                handleFocus(idInput);
+            }, 100);
         }
 
         function closeSingleStudentModal() {
@@ -1207,13 +1221,8 @@
             modal.style.display='flex'; 
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
             setTimeout(() => {
-                textarea.focus();
-                
-                // 修正：針對 iPad 使用 setSelectionRange 來選取內容，避免選到整個框
-                textarea.setSelectionRange(0, textarea.value.length);
-                
-                // 確保滾動到頂部，讓內容可見
-                textarea.scrollTop = 0;
+                // 使用 handleFocus 統一處理聚焦、選取與滾動
+                handleFocus(textarea);
             }, 50);
         }
         
