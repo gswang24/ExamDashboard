@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.5</title>
+    <title>監考儀表板 v0102.6</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -588,7 +588,7 @@
             <p style="color:var(--c-grey); font-size:0.9rem;">提示：若為「<strong>1 王小明</strong>」格式，會填入座號；若僅貼上「<strong>王小明</strong>」，座號欄將自動留空。</p>
             <textarea id="studentListInput" placeholder="例如：
 1 王小明
-2 李大華" onfocus="handleFocus(this)"></textarea>
+2 李大華"></textarea>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeModal()">取消</button>
                 <button class="btn btn-main" onclick="saveStudents()">確認</button>
@@ -601,11 +601,11 @@
             <h3>新增學生</h3>
             <div style="margin-bottom: 10px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">座號</label>
-                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1" onfocus="handleFocus(this)">
+                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1">
             </div>
             <div style="margin-bottom: 20px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">姓名</label>
-                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明" onfocus="handleFocus(this)">
+                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeSingleStudentModal()">取消</button>
@@ -628,24 +628,14 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 (修正 iPad 全選與鍵盤遮擋) ---
+        // --- 輸入框聚焦邏輯 ---
         function handleFocus(el) {
             el.focus();
-            
-            // 如果是名單(textarea)，針對iPad使用精確文字選取
-            if (el.tagName.toLowerCase() === 'textarea') {
-                setTimeout(() => {
-                    // 只選取文字範圍，避免選到容器
-                    el.setSelectionRange(0, el.value.length);
-                }, 10);
-            } else {
-                // 一般輸入框可以直接 select
+            if (el.tagName.toLowerCase() !== 'textarea') {
                 el.select();
             }
-            
-            // 延遲執行捲動，等待虛擬鍵盤彈出
+            // 一般輸入框(非Modal內)延遲捲動
             setTimeout(() => {
-                // 捲動元素到畫面中央
                 el.scrollIntoView({behavior: 'smooth', block: 'center'});
             }, 300);
         }
@@ -1056,10 +1046,12 @@
             document.getElementById('newStudentName').value = ''; 
             modal.style.display = 'flex';
             
-            const idInput = document.getElementById('newStudentId');
+            // 單一學生 Modal 也採用手動觸發 Focus
             setTimeout(() => {
-                handleFocus(idInput);
-            }, 100);
+                const idInput = document.getElementById('newStudentId');
+                idInput.focus();
+                // 避免全選框，只做一般聚焦
+            }, 300);
         }
 
         function closeSingleStudentModal() {
@@ -1220,10 +1212,15 @@
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
+            
+            // 重點修正：延遲執行聚焦，給予瀏覽器渲染時間，並確保精確選取文字
             setTimeout(() => {
-                // 使用 handleFocus 統一處理聚焦、選取與滾動
-                handleFocus(textarea);
-            }, 50);
+                textarea.focus();
+                // 使用 setSelectionRange(0, length) 確保只選取文字，且不會觸發容器級別的選取
+                textarea.setSelectionRange(0, textarea.value.length);
+                // 捲動到頂部
+                textarea.scrollTop = 0;
+            }, 300); 
         }
         
         function closeModal(){ 
