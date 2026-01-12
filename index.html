@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v9.74 (原生全螢幕+鍵盤防擋)</title>
+    <title>監考儀表板 v9.75 (優化鍵盤觸發)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -61,7 +61,7 @@
         body:fullscreen, body:-webkit-full-screen {
             padding: 0; 
             background-color: var(--c-grey);
-            overflow: hidden; /* 全螢幕時隱藏捲軸 */
+            overflow: hidden; 
         }
         body:fullscreen .clock-card,
         body:fullscreen .status-card,
@@ -82,7 +82,6 @@
         }
         #fullscreenBtn:hover { transform: scale(1.05); background-color: #000; }
         
-        /* 全螢幕模式下隱藏按鈕 (可選) */
         body:fullscreen #fullscreenBtn { opacity: 0.3; }
         body:fullscreen #fullscreenBtn:hover { opacity: 1; }
 
@@ -992,15 +991,16 @@
 
         // --- Subject/Seat Functions ---
         function addSubject(){
-            const d=document.createElement('div'); d.className='subject-item';
+            const d=document.createElement('div'); 
+            d.className='subject-item';
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" inputmode="numeric" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" inputmode="numeric" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
             
-            // iPad Hack: 延遲聚焦以觸發鍵盤
+            // iPad Hack: 將延遲改為極短時間 (50ms)，確保在使用者點擊事件的有效期限內觸發 focus
             setTimeout(() => {
                 const inp = d.querySelector('.subject-input');
                 if(inp) inp.focus();
-            }, 300);
+            }, 50);
         }
         function removeSubject(b){ 
             b.closest('.subject-item').remove(); 
@@ -1034,10 +1034,11 @@
             document.getElementById('newStudentName').value = ''; 
             modal.style.display = 'flex';
             
-            // iPad Hack: 延遲聚焦以觸發鍵盤
+            // iPad Hack: 將延遲從 300ms 改為 50ms。
+            // 這是關鍵修正：太長的延遲會被 iOS 判定為非用戶觸發，從而阻擋鍵盤彈出。
             setTimeout(() => {
                 document.getElementById('newStudentId').focus();
-            }, 300);
+            }, 50);
         }
 
         function closeSingleStudentModal() {
