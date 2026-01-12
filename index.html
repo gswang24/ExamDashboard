@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v9.75 (優化鍵盤觸發)</title>
+    <title>監考儀表板 v9.8 (優化鍵盤防擋)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -183,6 +183,8 @@
             width: 380px; min-width: 250px; 
             display: flex; flex-direction: column; 
             gap: 0; flex-shrink: 0; height: 100%; position: relative;
+            /* 允許本身在需要時捲動 (解決鍵盤擋住問題) */
+            transition: padding-bottom 0.2s;
         }
         
         .subject-list { 
@@ -605,16 +607,25 @@
             }
         }
 
-        // --- 輸入框聚焦 & 防擋邏輯 ---
+        // --- 輸入框聚焦 & 防擋邏輯 (核心修正) ---
         function handleFocus(el) {
             el.select(); // 原有的選取功能
             
+            // 檢測是否為考勤卡內的輸入框 (位於最底部)
+            if (el.closest('.attendance-card')) {
+                const col = document.getElementById('scheduleCol');
+                // 1. 強制加入底部大空間，讓瀏覽器有空間可以捲動
+                col.style.paddingBottom = '40vh'; 
+                // 2. 暫時允許父層捲動 (若原本被鎖定)
+                col.style.overflowY = 'auto';
+            }
+
             // 延遲執行捲動，等待鍵盤彈出
             setTimeout(() => {
-                // 1. 一般元素捲動到中央
+                // 1. 捲動元素到畫面中央
                 el.scrollIntoView({behavior: 'smooth', block: 'center'});
                 
-                // 2. 如果是在 Modal 內，將 Modal 往上推
+                // 2. Modal 處理
                 const modalOverlay = el.closest('.modal-overlay');
                 if(modalOverlay) {
                     modalOverlay.classList.add('keyboard-active');
@@ -622,14 +633,26 @@
             }, 300);
         }
 
-        // 監聽 blur 事件以復原 Modal 位置
+        // 監聽 blur (失焦) 事件以復原佈局
         document.addEventListener('focusout', function(e) {
             const modalOverlay = e.target.closest('.modal-overlay');
             if(modalOverlay) {
-                // 稍微延遲確認是否焦點跑到同一個 modal 的其他 input
                 setTimeout(() => {
                     if(!modalOverlay.contains(document.activeElement)) {
                         modalOverlay.classList.remove('keyboard-active');
+                    }
+                }, 100);
+            }
+
+            // 如果離開的是考勤卡，復原底部空間
+            if (e.target.closest('.attendance-card')) {
+                setTimeout(() => {
+                    // 確認新的焦點是否還在考勤卡內，如果不在了才復原
+                    if (!document.activeElement || !document.activeElement.closest('.attendance-card')) {
+                        const col = document.getElementById('scheduleCol');
+                        col.style.paddingBottom = '0';
+                        // 這裡不需強制設回 hidden，保持 CSS 定義即可，或者視需求復原
+                        // col.style.overflowY = 'hidden'; 
                     }
                 }, 100);
             }
@@ -1035,7 +1058,6 @@
             modal.style.display = 'flex';
             
             // iPad Hack: 將延遲從 300ms 改為 50ms。
-            // 這是關鍵修正：太長的延遲會被 iOS 判定為非用戶觸發，從而阻擋鍵盤彈出。
             setTimeout(() => {
                 document.getElementById('newStudentId').focus();
             }, 50);
