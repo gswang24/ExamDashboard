@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.7</title>
+    <title>監考儀表板 v0102.8</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -628,17 +628,17 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 ---
+        // --- 輸入框聚焦邏輯 (修正反應時間) ---
         function handleFocus(el) {
             // 這個 function 綁定在 subject/attendance input 上
-            // 這些通常只有單行，全選沒有問題
             el.focus();
+            // 從 300ms 改為 50ms，解決電腦版反應遲鈍問題，同時保留手機版緩衝
             setTimeout(() => {
                 if (el.tagName.toLowerCase() !== 'textarea') {
                     el.select();
                 }
                 el.scrollIntoView({behavior: 'smooth', block: 'center'});
-            }, 300);
+            }, 50); 
         }
 
         // --- 翻頁核心邏輯 ---
@@ -804,7 +804,7 @@
             });
         }
 
-        // --- Resizer 邏輯 ---
+        // --- Resizer 邏輯 (包含 v0102.7 修正) ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
@@ -1017,7 +1017,7 @@
                 // 確保輸入框加入時也能正確聚焦並選取
                 setTimeout(() => {
                     inp.select();
-                }, 10);
+                }, 50);
             }
         }
         function removeSubject(b){ 
@@ -1056,7 +1056,6 @@
             setTimeout(() => {
                 const idInput = document.getElementById('newStudentId');
                 idInput.focus();
-                // 避免全選框，只做一般聚焦
             }, 300);
         }
 
