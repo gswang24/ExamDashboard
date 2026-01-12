@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.9</title>
+    <title>監考儀表板 v0102.10</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -45,7 +45,7 @@
             user-select: none;
         }
 
-        /* 強制輸入框為文字選取模式，解決部分瀏覽器選取困難 */
+        /* 強制輸入框為文字選取模式 */
         input, textarea { 
             -webkit-user-select: text !important; 
             user-select: text !important; 
@@ -64,7 +64,6 @@
             position: fixed; width: 100%;
         }
 
-        /* 原生全螢幕樣式 */
         body:fullscreen, body:-webkit-full-screen {
             padding: 0; 
             background-color: var(--c-grey);
@@ -107,7 +106,7 @@
 
         .header-row { display: flex; height: 170px; min-height: 80px; flex-shrink: 0; transition: height 0.1s; }
 
-        /* --- 左側：目前時間 --- */
+        /* --- Clock --- */
         .clock-card {
             background-color: var(--c-yellow); color: var(--c-grey);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -154,7 +153,7 @@
         @keyframes flipDownBack { 0% { transform: rotateX(180deg); } 100% { transform: rotateX(0deg); } }
         .flip-sep { font-size: 3rem; font-weight: 800; color: var(--c-grey); padding-bottom: 10px; line-height: 1; transition: font-size 0.2s, padding 0.2s; }
 
-        /* --- 右側：剩餘時間 --- */
+        /* --- Status --- */
         .status-card {
             flex: 5;
             background-color: var(--c-grey); color: var(--c-linen);
@@ -184,9 +183,7 @@
         }
         
         .schedule-column { 
-            /* 1:3.5 比例設定 */
-            flex: 1; 
-            min-width: 250px; 
+            flex: 1; min-width: 250px; 
             display: flex; flex-direction: column; 
             gap: 0; flex-shrink: 0; height: 100%; position: relative;
         }
@@ -232,15 +229,11 @@
         }
         
         .att-box { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 8px;
+            flex: 1; display: flex; flex-direction: column; padding: 8px;
             border-radius: 10px;
             border: 2px solid rgba(255,255,255,0.1); 
             background: rgba(255, 255, 255, 0.05);
-            overflow: hidden; 
-            position: relative;
+            overflow: hidden; position: relative;
         }
         
         .att-box:nth-child(1) { border-color: var(--c-teal); background: rgba(126, 189, 194, 0.1); }
@@ -252,46 +245,25 @@
         .att-box:nth-child(3) { flex: 1.8; border-color: var(--c-red); background: rgba(187, 68, 48, 0.1); }
         
         .att-label { 
-            font-size: 1.1rem; 
-            font-weight: 900; 
-            width: 100%; 
-            text-align: left; 
-            color: #ccc; 
-            margin: 0;
-            line-height: 1;
-            flex-shrink: 0; 
+            font-size: 1.1rem; font-weight: 900; width: 100%; text-align: left; 
+            color: #ccc; margin: 0; line-height: 1; flex-shrink: 0; 
         }
         
         .att-val { 
             font-size: clamp(2rem, 11cqi, 4.5rem); 
-            font-weight: 800; 
-            background: transparent; border: none; 
-            text-align: center; 
-            outline: none; 
-            padding: 0; margin: 0;
-            margin-top: auto; 
-            margin-bottom: auto;
-            width: 100%;
-            box-sizing: border-box; 
-            line-height: 1;
+            font-weight: 800; background: transparent; border: none; 
+            text-align: center; outline: none; padding: 0; margin: 0;
+            margin-top: auto; margin-bottom: auto; width: 100%;
+            box-sizing: border-box; line-height: 1;
         }
 
         textarea.att-val { 
-            resize: none; 
-            height: auto;
-            flex-grow: 1; 
-            width: 100%;
-            font-size: clamp(1rem, 5cqi, 1.3rem); 
-            line-height: 1.4; 
+            resize: none; height: auto; flex-grow: 1; width: 100%;
+            font-size: clamp(1rem, 5cqi, 1.3rem); line-height: 1.4; 
             border: 2px dashed rgba(187, 68, 48, 0.5);
-            border-radius: 8px; 
-            margin-top: 5px; 
-            margin-bottom: 0;
-            padding: 5px 8px; 
-            color: #ff5252; 
-            font-weight: bold;
-            background: rgba(0,0,0,0.2);
-            text-align: left;
+            border-radius: 8px; margin-top: 5px; margin-bottom: 0;
+            padding: 5px 8px; color: #ff5252; font-weight: bold;
+            background: rgba(0,0,0,0.2); text-align: left;
         }
         textarea.att-val::placeholder { color: rgba(255,255,255,0.3); font-weight: normal; }
         
@@ -302,9 +274,8 @@
 
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
 
-        /* --- 座位表容器 --- */
+        /* --- Seat --- */
         .seating-container {
-            /* 1:3.5 比例設定 */
             flex: 3.5; 
             background-color: var(--c-linen);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -343,48 +314,31 @@
 
         .classroom-layout {
             flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; 
-            justify-content: center; 
-            align-items: stretch; 
-            gap: 4px; 
-            padding-bottom: 5px;
-            overflow: auto; width: 100%;
-            -webkit-overflow-scrolling: touch;
-            order: 1; 
+            justify-content: center; align-items: stretch; gap: 4px; padding-bottom: 5px;
+            overflow: auto; width: 100%; -webkit-overflow-scrolling: touch; order: 1; 
         }
         
         .seat-column { 
             display: flex; flex-direction: column; gap: 4px; align-items: center; 
-            flex: 1; min-width: 60px; 
-            height: 100%; 
+            flex: 1; min-width: 60px; height: 100%; 
         }
         
         .col-label-input { 
-            flex: 0 0 auto;
-            margin-top: 5px; width: 100%; text-align: center; 
+            flex: 0 0 auto; margin-top: 5px; width: 100%; text-align: center; 
             background: transparent; border: 1px solid transparent; border-radius: 4px; 
             font-weight: 800; color: var(--c-grey); font-size: 0.9rem; opacity: 0.7; outline: none; 
-            order: 999; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-            flex-shrink: 0;
-            pointer-events: none; 
+            order: 999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            flex-shrink: 0; pointer-events: none; 
         }
 
-        .seating-container.student-view .col-label-input {
-            order: -1; 
-            margin-top: 0;
-            margin-bottom: 5px;
-        }
+        .seating-container.student-view .col-label-input { order: -1; margin-top: 0; margin-bottom: 5px; }
 
         .seat-box {
-            width: 100%; 
-            flex: 1 1 0%; 
-            min-height: 0; 
-            
+            width: 100%; flex: 1 1 0%; min-height: 0; 
             border: 2px solid var(--c-grey); border-radius: 6px; display: flex; background: #fff;
             position: relative; box-sizing: border-box; cursor: grab;
             box-shadow: 2px 2px 0px rgba(0,0,0,0.05);
             overflow: hidden; touch-action: none; 
-
             container-type: size;
         }
         .seat-box:active { cursor: grabbing; transform: scale(0.98); }
@@ -396,16 +350,10 @@
         .seat-num { width: 25px; min-width: 20px; border-right: 2px solid var(--c-grey); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 900; background: var(--c-yellow); color: var(--c-grey); flex-shrink: 0; pointer-events: none; }
         
         .seat-name { 
-            flex: 1; 
-            display: flex; align-items: center; justify-content: center; 
+            flex: 1; display: flex; align-items: center; justify-content: center; 
             font-size: clamp(0.8rem, min(24cqw, 50cqh), 3.5rem); 
-            font-weight: bold; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            pointer-events: none; 
-            padding: 0 2px;
-            line-height: 1.1;
+            font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            pointer-events: none; padding: 0 2px; line-height: 1.1;
         }
 
         .seat-close { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: var(--c-red); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; cursor: pointer; opacity: 0; transition: 0.2s; z-index: 5; border: 1px solid #fff; }
@@ -414,42 +362,28 @@
         .seat-highlight .seat-num { background-color: #fff; color: var(--c-teal); }
 
         .podium {
-            width: 180px; 
-            height: 35px; 
-            border: 3px solid var(--c-grey); 
+            width: 180px; height: 35px; border: 3px solid var(--c-grey); 
             background: var(--c-grey); color: #fff;
             display: flex; align-items: center; justify-content: center;
             font-weight: 900; letter-spacing: 5px; pointer-events: none;
             box-shadow: 4px 4px 0px rgba(0,0,0,0.1); border-radius: 8px;
-            margin: 5px 0; 
-            align-self: center; 
-            order: 2; 
-            z-index: 10;
-            font-size: 0.9rem;
+            margin: 5px 0; align-self: center; order: 2; z-index: 10; font-size: 0.9rem;
         }
-
         .seating-container.student-view .podium { order: 0; margin-bottom: 10px; }
 
         /* --- Modal --- */
         .modal-overlay { 
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-            background: rgba(35, 31, 32, 0.7); 
-            display: none; 
-            align-items: flex-start; /* 靠上對齊，避免鍵盤遮擋 */
-            padding-top: 50px; 
-            overflow-y: auto;        /* 允許滾動 */
-            z-index: 10000; 
-            backdrop-filter: blur(2px); 
+            background: rgba(35, 31, 32, 0.7); display: none; 
+            align-items: flex-start; padding-top: 50px; overflow-y: auto;        
+            z-index: 10000; backdrop-filter: blur(2px); 
             -webkit-overflow-scrolling: touch; 
         }
         
         .modal { 
             background: #fff; padding: 25px; border-radius: 16px; width: 450px; 
-            border: 4px solid var(--c-grey); 
-            box-shadow: 8px 8px 0px var(--c-yellow); 
-            margin: 0 auto 50vh auto; /* 底部預留空間 */
-            flex-shrink: 0;
-            max-width: 90%;
+            border: 4px solid var(--c-grey); box-shadow: 8px 8px 0px var(--c-yellow); 
+            margin: 0 auto 50vh auto; flex-shrink: 0; max-width: 90%;
         }
         
         .modal h3 { margin-top: 0; color: var(--c-grey); }
@@ -578,7 +512,7 @@
             </div>
 
             <div class="classroom-layout" id="classroomLayout">
-                </div>
+            </div>
 
             <div class="podium">講臺</div>
         </div>
@@ -617,7 +551,7 @@
     </div>
 
     <script>
-        // --- 全螢幕 (原生 API) ---
+        // --- 全螢幕 ---
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch((e) => {
@@ -630,44 +564,43 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 (修正 Safari 死機與反應速度) ---
-        function handleFocus(el) {
-            // 1. 【關鍵修正】絕對不要在這裡寫 el.focus()，因為已經觸發 focus 事件了，
-            //    再次呼叫會造成 Safari 無窮迴圈導致當機。
+        // --- 輸入框聚焦邏輯 (Debounce防跳動 + Safari防當機) ---
+        // 使用全域變數儲存 timer，確保快速切換時可以取消上一次的聚焦請求
+        let focusTimer = null;
 
-            // 2. 判斷是否為觸控裝置 (iPad/手機)
-            //    iPad 在鍵盤彈出時，如果不給延遲，選取動作會被鍵盤動畫打斷。
+        function handleFocus(el) {
+            // 1. 每次觸發 focus 時，先清除上一次還沒執行的聚焦指令
+            //    這樣如果您快速從 A 點到 B，A 的延遲指令就會被取消，不會把焦點搶回去
+            if (focusTimer) clearTimeout(focusTimer);
+
             const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-            
-            // 電腦版：幾乎不延遲 (10ms)，達到「秒選」的快感
-            // iPad版：延遲 400ms，等待軟體鍵盤完全彈出後再選取，避免畫面跳動或選取失效
             const delay = isTouch ? 400 : 10;
 
-            setTimeout(() => {
-                // 只有非 textarea 才全選 (避免考勤卡備註被全選誤刪)
+            focusTimer = setTimeout(() => {
+                // 2. 雙重保險：只有當這個元素「仍然是」目前的使用者焦點時才執行
+                if (document.activeElement !== el) return;
+
                 if (el.tagName.toLowerCase() !== 'textarea') {
                     el.select();
                 }
                 
-                // iPad 上捲動建議用 auto (瞬間跳轉) 避免 smooth (平滑) 與鍵盤動畫衝突
                 el.scrollIntoView({
                     behavior: isTouch ? 'auto' : 'smooth', 
                     block: 'center'
                 });
+                
+                focusTimer = null;
             }, delay); 
         }
 
-        // --- 翻頁核心邏輯 ---
+        // --- 翻頁核心 ---
         function updateFlipUnit(elementId, newValue) {
             const unit = document.getElementById(elementId);
             if (!unit) return;
-            
             const topSpan = unit.querySelector('.flip-top span');
             const bottomSpan = unit.querySelector('.flip-bottom span');
-            
             const currentVal = topSpan.innerText;
             const nextVal = String(newValue).padStart(2, '0');
-            
             if (currentVal === nextVal) return;
 
             const frontLeaf = document.createElement('div');
@@ -680,44 +613,37 @@
             
             topSpan.innerText = nextVal;
             bottomSpan.innerText = currentVal; 
-
             unit.appendChild(frontLeaf);
             unit.appendChild(backLeaf);
-            
             unit.classList.add('flipping');
-
             setTimeout(() => {
                 bottomSpan.innerText = nextVal;
                 frontLeaf.remove();
                 backLeaf.remove();
                 unit.classList.remove('flipping');
-            }, 350); // 對齊CSS時間
+            }, 350); 
         }
 
-        // --- 視角切換 & 排序切換 ---
+        // --- 視角切換 ---
         const viewToggle = document.getElementById('viewToggle');
         const dirToggle = document.getElementById('dirToggle');
         const seatingContainer = document.getElementById('seatingContainer');
-        const classroomLayout = document.getElementById('classroomLayout');
 
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
             dirToggle.checked = !dirToggle.checked;
-            
             if (document.startViewTransition) {
                  document.startViewTransition(() => triggerViewChangeLogic());
             } else {
                  triggerViewChangeLogic();
             }
         }
-
         function setDirection(isRight) {
             if (dirToggle.checked === isRight) return;
             dirToggle.checked = isRight;
             updateColumnLabels();
         }
-
         viewToggle.addEventListener('change', () => {
             dirToggle.checked = !dirToggle.checked;
             if (document.startViewTransition) {
@@ -726,7 +652,6 @@
                  triggerViewChangeLogic();
             }
         });
-
         dirToggle.addEventListener('change', () => {
             updateColumnLabels();
         });
@@ -762,11 +687,9 @@
         function renderGridToDOM(grid) {
             const container = document.getElementById('classroomLayout');
             container.innerHTML = '';
-            
             grid.forEach((colData, idx) => {
                 const div = document.createElement('div');
                 div.className = 'seat-column';
-                
                 colData.seats.forEach(seat => {
                     if (seat) {
                         const s = createSeat(seat.id, seat.name);
@@ -778,7 +701,6 @@
                         div.appendChild(s);
                     }
                 });
-                
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
                 div.appendChild(inp);
@@ -789,13 +711,8 @@
         function triggerViewChangeLogic() {
             const isStudent = viewToggle.checked;
             const currentGrid = getGridFromDOM();
-            
-            if (isStudent) {
-                seatingContainer.classList.add('student-view');
-            } else {
-                seatingContainer.classList.remove('student-view');
-            }
-            
+            if (isStudent) seatingContainer.classList.add('student-view');
+            else seatingContainer.classList.remove('student-view');
             const newGrid = rotateGrid180(currentGrid);
             renderGridToDOM(newGrid);
             updateColumnLabels(); 
@@ -805,45 +722,29 @@
             const cols = document.querySelectorAll('.seat-column');
             const total = cols.length;
             const isRightStart = dirToggle.checked; 
-
             cols.forEach((col, index) => {
                 const inp = col.querySelector('.col-label-input');
                 let labelNum;
-                
-                if (isRightStart) {
-                    labelNum = total - index;
-                } else {
-                    labelNum = index + 1;
-                }
-                
+                if (isRightStart) labelNum = total - index;
+                else labelNum = index + 1;
                 inp.value = `第${labelNum}排`;
             });
         }
 
-        // --- Resizer 邏輯 ---
+        // --- Resizer ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
                 const target = document.getElementById(targetId);
                 if (!resizer || !target) return;
-
                 let startPos = 0, startSize = 0;
-
                 const onStart = (e) => {
-                    if (e.type === 'touchstart') { }
-                    
                     startPos = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     const rect = target.getBoundingClientRect();
                     startSize = direction === 'width' ? rect.width : rect.height;
-                    
-                    if (direction === 'width') {
-                        target.style.width = startSize + 'px';
-                    } else {
-                        target.style.height = startSize + 'px';
-                    }
-
+                    if (direction === 'width') target.style.width = startSize + 'px';
+                    else target.style.height = startSize + 'px';
                     target.style.flex = 'none';
-
                     document.body.classList.add('is-resizing');
                     if(direction !== 'width') document.body.classList.add('row-resize');
                     window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive:false});
@@ -853,14 +754,11 @@
                     if (e.type === 'touchmove') e.preventDefault();
                     let curr = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     let newSize = isBottomAnchor ? startSize + (startPos - curr) : startSize + (curr - startPos);
-                    
                     if (newSize > 40) { 
                         if (direction === 'width') {
                             const parentWidth = target.parentElement.clientWidth;
-                            // 限制最大寬度，保留右側至少 220px (status-card min-width 200px + gap)
                             const maxWidth = parentWidth - 220; 
                             if (newSize > maxWidth) newSize = maxWidth;
-                            
                             target.style.width = newSize+'px';
                         } else { 
                             target.style.height = newSize+'px'; 
@@ -881,15 +779,12 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- 自適應 ResizeObserver ---
+        // --- ResizeObserver ---
         const headerRow = document.getElementById('headerRow');
         const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                if (entry.contentRect.height < 150) {
-                    headerRow.classList.add('compact');
-                } else {
-                    headerRow.classList.remove('compact');
-                }
+                if (entry.contentRect.height < 150) headerRow.classList.add('compact');
+                else headerRow.classList.remove('compact');
             }
         });
         headerObserver.observe(headerRow);
@@ -897,15 +792,11 @@
         const attCard = document.getElementById('attendanceCard');
         const attObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                if (entry.contentRect.height < 140) {
-                    attCard.classList.add('compact');
-                } else {
-                    attCard.classList.remove('compact');
-                }
+                if (entry.contentRect.height < 140) attCard.classList.add('compact');
+                else attCard.classList.remove('compact');
             }
         });
         attObserver.observe(attCard);
-
 
         // --- Drag & Drop ---
         let dragItem=null, ghostItem=null, dragStartX=0, dragStartY=0;
@@ -913,7 +804,6 @@
         function handleDragStart(e) {
             if(e.target.classList.contains('seat-close') || (e.type==='mousedown'&&e.button!==0)) return;
             if(this.classList.contains('empty')) return;
-            
             e.preventDefault(); dragItem=this;
             dragStartX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
             dragStartY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
@@ -950,13 +840,10 @@
                     const srcH=dragItem.innerHTML, srcC=dragItem.className;
                     const srcV=dragItem.style.viewTransitionName; 
                     const tgtV=t.style.viewTransitionName;
-
                     dragItem.innerHTML=t.innerHTML; dragItem.className=t.className;
                     dragItem.style.viewTransitionName = tgtV;
-
                     t.innerHTML=srcH; t.className=srcC;
                     t.style.viewTransitionName = srcV;
-
                     updateStudentsFromDOM();
                 }
             }
@@ -965,7 +852,7 @@
             window.removeEventListener('mouseup', handleDragEnd); window.removeEventListener('touchend', handleDragEnd);
         }
 
-        // --- Clock & Schedule Logic ---
+        // --- Clock & Schedule ---
         function formatTimeInput(i){ 
             let v=i.value.replace(/[^0-9:]/g,''); 
             if(!v)return;
@@ -1020,124 +907,66 @@
         }
         function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 
-        // --- Subject/Seat Functions ---
         function addSubject(){
             const d=document.createElement('div'); 
             d.className='subject-item';
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
-            
             const inp = d.querySelector('.subject-input');
-            if(inp) {
-                inp.focus();
-                // 確保輸入框加入時也能正確聚焦並選取
-                setTimeout(() => {
-                    inp.select();
-                }, 10);
-            }
+            if(inp) { inp.focus(); setTimeout(() => { inp.select(); }, 10); }
         }
-        function removeSubject(b){ 
-            b.closest('.subject-item').remove(); 
-        }
+        function removeSubject(b){ b.closest('.subject-item').remove(); }
         
         let students=[{id:"1",name:"王妍心"},{id:"2",name:"李大華"},{id:"3",name:"張小明"},{id:"4",name:"陳阿寶"},{id:"5",name:"林志豪"},{id:"6",name:"許家豪"},{id:"7",name:"吳雅婷"},{id:"8",name:"蔡欣怡"}];
         function createSeat(n,nm){
             const s=document.createElement('div'); s.className='seat-box';
             s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             s.onclick=function(){ if(this.classList.contains('empty')) addNewStudent(this); };
-            if(n) {
-                s.style.viewTransitionName = 'seat-' + n;
-            } else if (nm) {
-                s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
-            }
+            if(n) s.style.viewTransitionName = 'seat-' + n;
+            else if (nm) s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
             enableDragAndDrop(s); return s;
         }
         function convertToEmpty(el){ 
-            el.className='seat-box empty'; 
-            el.innerHTML='<div class="add-sign">+</div>'; 
-            el.style.viewTransitionName = ''; 
-            updateStudentsFromDOM(); 
+            el.className='seat-box empty'; el.innerHTML='<div class="add-sign">+</div>'; 
+            el.style.viewTransitionName = ''; updateStudentsFromDOM(); 
         }
         
         let targetSeatElement = null; 
-
         function addNewStudent(el){
             targetSeatElement = el; 
             const modal = document.getElementById('singleStudentModal');
             document.getElementById('newStudentId').value = ''; 
             document.getElementById('newStudentName').value = ''; 
             modal.style.display = 'flex';
-            
-            // 單一學生 Modal 也採用手動觸發 Focus
-            setTimeout(() => {
-                const idInput = document.getElementById('newStudentId');
-                idInput.focus();
-                // 避免全選框，只做一般聚焦
-            }, 300);
+            setTimeout(() => { document.getElementById('newStudentId').focus(); }, 300);
         }
-
-        function closeSingleStudentModal() {
-            document.getElementById('singleStudentModal').style.display = 'none';
-            targetSeatElement = null;
-        }
-
+        function closeSingleStudentModal() { document.getElementById('singleStudentModal').style.display = 'none'; targetSeatElement = null; }
         function confirmAddStudent() {
             if (!targetSeatElement) return;
             const n = document.getElementById('newStudentId').value.trim();
             const nm = document.getElementById('newStudentName').value.trim();
-            
-            if (!nm) {
-                alert("請輸入姓名！");
-                return;
-            }
-
+            if (!nm) { alert("請輸入姓名！"); return; }
             targetSeatElement.className = 'seat-box';
             targetSeatElement.innerHTML = `<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
-            
-            if (n) {
-                targetSeatElement.style.viewTransitionName = 'seat-' + n;
-            } else {
-                targetSeatElement.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
-            }
-            
-            updateStudentsFromDOM();
-            closeSingleStudentModal();
+            if (n) targetSeatElement.style.viewTransitionName = 'seat-' + n;
+            else targetSeatElement.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
+            updateStudentsFromDOM(); closeSingleStudentModal();
         }
 
-        document.getElementById('newStudentId').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') document.getElementById('newStudentName').focus();
-        });
-        document.getElementById('newStudentName').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') confirmAddStudent();
-        });
-
+        document.getElementById('newStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('newStudentName').focus(); });
+        document.getElementById('newStudentName').addEventListener('keydown', function(e) { if (e.key === 'Enter') confirmAddStudent(); });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const modal = document.getElementById('modal');
-                const singleModal = document.getElementById('singleStudentModal');
-                if (modal.style.display === 'flex') closeModal();
-                if (singleModal.style.display === 'flex') closeSingleStudentModal();
+                if (document.getElementById('modal').style.display === 'flex') closeModal();
+                if (document.getElementById('singleStudentModal').style.display === 'flex') closeSingleStudentModal();
             }
         });
-        
-        // 點擊遮罩關閉
         ['modal', 'singleStudentModal'].forEach(id => {
             const el = document.getElementById(id);
-            if(el) {
-                el.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        if(id === 'modal') closeModal();
-                        else closeSingleStudentModal();
-                    }
-                });
-            }
+            if(el) el.addEventListener('click', function(e) { if (e.target === this) { if(id === 'modal') closeModal(); else closeSingleStudentModal(); }});
         });
 
-        window.deleteSeat = function(e, b) { 
-            e.stopPropagation(); 
-            convertToEmpty(b.parentElement);
-        }
-
+        window.deleteSeat = function(e, b) { e.stopPropagation(); convertToEmpty(b.parentElement); }
         function updateStudentsFromDOM(){
             const tmp=[]; document.querySelectorAll('.seat-column').forEach(c=>{
                 c.querySelectorAll('.seat-box:not(.empty)').forEach(s=>{ tmp.push({id:s.querySelector('.seat-num').innerText, name:s.querySelector('.seat-name').innerText}); });
@@ -1150,9 +979,7 @@
             const div=document.createElement('div'); div.className='seat-column';
             for(let i=0;i<max;i++){ const s=createSeat('',''); convertToEmpty(s); div.appendChild(s); }
             const inp=document.createElement('input'); inp.className='col-label-input';
-            div.appendChild(inp);
-            c.appendChild(div);
-            updateColumnLabels();
+            div.appendChild(inp); c.appendChild(div); updateColumnLabels();
         }
         window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels();} }
         window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); }
@@ -1163,7 +990,6 @@
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
             if(!pool.length)return;
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            
             const doShuffle = () => {
                 s.forEach((x,i)=>{ 
                     x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
@@ -1172,12 +998,7 @@
                 });
                 students=pool;
             };
-
-            if (document.startViewTransition) {
-                document.startViewTransition(doShuffle);
-            } else {
-                doShuffle();
-            }
+            if (document.startViewTransition) document.startViewTransition(doShuffle); else doShuffle();
         }
         function refillSeating(arr){
             let cols=document.querySelectorAll('.seat-column');
@@ -1186,7 +1007,6 @@
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
             let total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
             while(total<pool.length){ addColumn(); cols=document.querySelectorAll('.seat-column'); total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); }
-            
             const doRefill = () => {
                 let idx=0;
                 cols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
@@ -1200,12 +1020,7 @@
                 })});
                 students=pool;
             };
-
-            if(document.startViewTransition) {
-                document.startViewTransition(doRefill);
-            } else {
-                doRefill();
-            }
+            if(document.startViewTransition) document.startViewTransition(doRefill); else doRefill();
         }
         function generateSeatingInitial(){
             const c=document.getElementById('classroomLayout'); c.innerHTML='';
@@ -1216,15 +1031,12 @@
                 const col=document.createElement('div'); col.className='seat-column';
                 for(let r=0;r<6;r++){
                     if(idx<pool.length){ 
-                        const p=pool[idx++]; 
-                        const s = createSeat(p.id,p.name);
-                        col.appendChild(s); 
+                        const p=pool[idx++]; const s = createSeat(p.id,p.name); col.appendChild(s); 
                     }
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
                 const inp=document.createElement('input'); inp.className='col-label-input';
-                col.appendChild(inp);
-                c.appendChild(col);
+                col.appendChild(inp); c.appendChild(col);
             }
             updateColumnLabels();
         }
@@ -1234,34 +1046,21 @@
             const textarea = document.getElementById('studentListInput');
             modal.style.display='flex'; 
             textarea.value = students.map(s => s.id ? `${s.id} ${s.name}` : s.name).join('\n');
-            
-            // 延遲聚焦與選取，給予瀏覽器反應時間，確保全選文字
             setTimeout(() => {
                 textarea.focus();
-                // 針對iPad優化：精確選取文字範圍
                 textarea.setSelectionRange(0, textarea.value.length);
                 textarea.scrollTop = 0;
             }, 300); 
         }
-        
-        function closeModal(){ 
-            const modal = document.getElementById('modal');
-            modal.style.display='none'; 
-        }
-        
+        function closeModal(){ document.getElementById('modal').style.display='none'; }
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
             const arr=val.split('\n').map(x=>{ 
-                x=x.trim(); 
-                if(!x) return null; 
+                x=x.trim(); if(!x) return null; 
                 const match = x.match(/^(\d+)[\s\.\,\、\t]+(.+)$/);
-                if (match) {
-                    return { id: match[1], name: match[2].trim() };
-                } else {
-                    return { id: "", name: x };
-                }
+                if (match) return { id: match[1], name: match[2].trim() };
+                else return { id: "", name: x };
             }).filter(x=>x);
-
             if(arr.length){ refillSeating(arr); closeModal(); } else alert("名單為空");
         }
 
