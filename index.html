@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v9.71 (iPad鍵盤修正版)</title>
+    <title>監考儀表板 v9.72 (iPad優化版)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -31,17 +31,16 @@
         *, *::before, *::after {
             box-sizing: border-box;
             -webkit-touch-callout: none; 
-            /* 防止選取文字干擾拖曳，但這是導致鍵盤不出來的主因，下面會針對 input 覆蓋 */
             -webkit-user-select: none;
             user-select: none;
         }
 
-        /* --- 修正：輸入框必須允許選取與觸控，iPad 鍵盤才會出來 --- */
+        /* --- 輸入框必須允許選取與觸控，iPad 鍵盤才會出來 --- */
         input, textarea { 
             -webkit-user-select: text !important; 
             user-select: text !important; 
-            -webkit-touch-callout: default !important; /* 允許長按出現放大鏡 */
-            touch-action: manipulation; /* 優化觸控點擊判定 */
+            -webkit-touch-callout: default !important;
+            touch-action: manipulation;
             cursor: text;
         }
 
@@ -124,7 +123,7 @@
 
         .header-row { display: flex; height: 170px; min-height: 80px; flex-shrink: 0; transition: height 0.1s; }
 
-        /* --- 左側：目前時間 (1:5) --- */
+        /* --- 左側：目前時間 --- */
         .clock-card {
             background-color: var(--c-yellow); color: var(--c-grey);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -170,7 +169,7 @@
         @keyframes flipDownBack { 0% { transform: rotateX(180deg); } 100% { transform: rotateX(0deg); } }
         .flip-sep { font-size: 3rem; font-weight: 800; color: var(--c-grey); padding-bottom: 10px; line-height: 1; transition: font-size 0.2s, padding 0.2s; }
 
-        /* --- 右側：剩餘時間 (1:5) --- */
+        /* --- 右側：剩餘時間 --- */
         .status-card {
             flex: 5;
             background-color: var(--c-grey); color: var(--c-linen);
@@ -1056,6 +1055,20 @@
                 const singleModal = document.getElementById('singleStudentModal');
                 if (modal.style.display === 'flex') closeModal();
                 if (singleModal.style.display === 'flex') closeSingleStudentModal();
+            }
+        });
+        
+        // --- 新增：點擊遮罩關閉視窗 (for iPad) ---
+        ['modal', 'singleStudentModal'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('click', function(e) {
+                    // 如果點擊的目標正是遮罩本身 (而不是內部的 modal 內容)
+                    if (e.target === this) {
+                        if(id === 'modal') closeModal();
+                        else closeSingleStudentModal();
+                    }
+                });
             }
         });
 
