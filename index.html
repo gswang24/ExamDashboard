@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.10</title>
+    <title>監考儀表板 v0113.2 (格局記憶)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -45,7 +45,6 @@
             user-select: none;
         }
 
-        /* 強制輸入框為文字選取模式 */
         input, textarea { 
             -webkit-user-select: text !important; 
             user-select: text !important; 
@@ -88,6 +87,14 @@
         body:fullscreen #fullscreenBtn { opacity: 0.3; }
         body:fullscreen #fullscreenBtn:hover { opacity: 1; }
 
+        .version-tag {
+            position: fixed; top: 12px; left: 15px; z-index: 3000;
+            color: var(--c-grey); font-weight: 900; font-size: 0.9rem;
+            opacity: 0.4; pointer-events: none;
+            font-family: 'Courier New', monospace;
+            display: none;
+        }
+
         /* --- Resizer --- */
         .resizer { 
             z-index: 100; flex-shrink: 0; 
@@ -106,7 +113,6 @@
 
         .header-row { display: flex; height: 170px; min-height: 80px; flex-shrink: 0; transition: height 0.1s; }
 
-        /* --- Clock --- */
         .clock-card {
             background-color: var(--c-yellow); color: var(--c-grey);
             border: 2px solid var(--c-grey); border-radius: 16px;
@@ -153,7 +159,6 @@
         @keyframes flipDownBack { 0% { transform: rotateX(180deg); } 100% { transform: rotateX(0deg); } }
         .flip-sep { font-size: 3rem; font-weight: 800; color: var(--c-grey); padding-bottom: 10px; line-height: 1; transition: font-size 0.2s, padding 0.2s; }
 
-        /* --- Status --- */
         .status-card {
             flex: 5;
             background-color: var(--c-grey); color: var(--c-linen);
@@ -274,10 +279,8 @@
 
         #addSubjectBtn { width: 100%; border-style: dashed; background: rgba(255,255,255,0.5); margin-top: auto; }
 
-        /* --- Seat --- */
         .seating-container {
-            flex: 3.5; 
-            background-color: var(--c-linen);
+            flex: 3.5; background-color: var(--c-linen);
             border: 2px solid var(--c-grey); border-radius: 16px;
             box-shadow: 4px 4px 0px rgba(35, 31, 32, 0.15); 
             padding: 8px;
@@ -320,7 +323,8 @@
         
         .seat-column { 
             display: flex; flex-direction: column; gap: 4px; align-items: center; 
-            flex: 1; min-width: 60px; height: 100%; 
+            flex: 1; min-width: 60px; 
+            height: 100%; min-height: 100px;
         }
         
         .col-label-input { 
@@ -371,7 +375,6 @@
         }
         .seating-container.student-view .podium { order: 0; margin-bottom: 10px; }
 
-        /* --- Modal --- */
         .modal-overlay { 
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background: rgba(35, 31, 32, 0.7); display: none; 
@@ -397,6 +400,8 @@
     </style>
 </head>
 <body>
+
+    <div class="version-tag">v0113.2</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -524,7 +529,7 @@
             <p style="color:var(--c-grey); font-size:0.9rem;">提示：若為「<strong>1 王小明</strong>」格式，會填入座號；若僅貼上「<strong>王小明</strong>」，座號欄將自動留空。</p>
             <textarea id="studentListInput" placeholder="例如：
 1 王小明
-2 李大華"></textarea>
+2 李大華" onfocus="this.select()"></textarea>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeModal()">取消</button>
                 <button class="btn btn-main" onclick="saveStudents()">確認</button>
@@ -537,11 +542,11 @@
             <h3>新增學生</h3>
             <div style="margin-bottom: 10px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">座號</label>
-                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1">
+                <input type="text" id="newStudentId" class="modal-input" placeholder="例如：1" onfocus="this.select()">
             </div>
             <div style="margin-bottom: 20px;">
                 <label style="display:block; margin-bottom:5px; font-weight:bold; color:var(--c-grey);">姓名</label>
-                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明">
+                <input type="text" id="newStudentName" class="modal-input" placeholder="例如：王小明" onfocus="this.select()">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-sec" onclick="closeSingleStudentModal()">取消</button>
@@ -551,7 +556,131 @@
     </div>
 
     <script>
-        // --- 全螢幕 ---
+        // --- 本地存儲設定 ---
+        const SAVE_KEY = 'dashboard_v0113_2_layout';
+
+        function saveToLocal() {
+            // 1. Subjects
+            const subjects = [];
+            document.querySelectorAll('.subject-item').forEach(item => {
+                subjects.push({
+                    name: item.querySelector('.subject-input').value,
+                    start: item.querySelector('.time-start').value,
+                    end: item.querySelector('.time-end').value
+                });
+            });
+
+            // 2. Attendance
+            const attInputs = document.querySelectorAll('.att-val');
+            const attendance = {
+                expected: attInputs[0].value,
+                actual: attInputs[1].value,
+                missing: attInputs[2].value
+            };
+
+            // 3. View Settings
+            const settings = {
+                isStudentView: document.getElementById('viewToggle').checked,
+                isRightStart: document.getElementById('dirToggle').checked
+            };
+
+            // 4. Grid Layout (Capture explicit structure)
+            const gridLayout = getGridFromDOM().map(col => ({
+                label: col.label,
+                seats: col.seats.map(seat => {
+                    if (!seat) return null; // Empty
+                    return { id: seat.id, name: seat.name };
+                })
+            }));
+
+            const data = {
+                students: students,
+                subjects: subjects,
+                attendance: attendance,
+                settings: settings,
+                grid: gridLayout
+            };
+
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        }
+
+        function loadFromLocal() {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (raw) {
+                try {
+                    const data = JSON.parse(raw);
+                    
+                    // 1. Restore Grid Layout (Prioritize explicit grid)
+                    if (data.grid && Array.isArray(data.grid)) {
+                        // Reconstruct grid structure exactly as saved
+                        // Note: View Toggle state will handle the rotation visual separately
+                        renderGridToDOM(data.grid);
+                        updateStudentsFromDOM(); // Sync global students variable
+                    } else if (data.students) {
+                        // Legacy support
+                        students = data.students;
+                        refillSeating(students);
+                    } else {
+                        generateSeatingInitial();
+                    }
+
+                    // 2. Restore Subjects
+                    if (data.subjects && Array.isArray(data.subjects)) {
+                        const list = document.getElementById('subjectList');
+                        const existing = list.querySelectorAll('.subject-item');
+                        existing.forEach(el => el.remove());
+                        const addBtn = document.getElementById('addSubjectBtn');
+                        
+                        data.subjects.forEach(sub => {
+                            const d = document.createElement('div');
+                            d.className = 'subject-item';
+                            d.innerHTML = `<div class="subject-header"><input type="text" class="subject-input" value="${sub.name}" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)" value="${sub.start}"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)" value="${sub.end}"></div>`;
+                            list.insertBefore(d, addBtn);
+                        });
+                    }
+
+                    // 3. Restore Attendance
+                    if (data.attendance) {
+                        const attInputs = document.querySelectorAll('.att-val');
+                        if (attInputs[0]) attInputs[0].value = data.attendance.expected;
+                        if (attInputs[1]) attInputs[1].value = data.attendance.actual;
+                        if (attInputs[2]) attInputs[2].value = data.attendance.missing;
+                    }
+
+                    // 4. Restore Settings
+                    if (data.settings) {
+                        const vToggle = document.getElementById('viewToggle');
+                        const dToggle = document.getElementById('dirToggle');
+                        
+                        if (vToggle.checked !== data.settings.isStudentView) vToggle.checked = data.settings.isStudentView;
+                        if (dToggle.checked !== data.settings.isRightStart) dToggle.checked = data.settings.isRightStart;
+                        
+                        // Apply CSS class for view
+                        if(data.settings.isStudentView) {
+                            document.getElementById('seatingContainer').classList.add('student-view');
+                        }
+                        updateColumnLabels();
+                    }
+                } catch(e) {
+                    console.error("Load error:", e);
+                    generateSeatingInitial();
+                }
+            } else {
+                generateSeatingInitial();
+            }
+        }
+
+        // Auto-save trigger
+        let saveTimer = null;
+        function triggerSave() {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveToLocal, 1000); 
+        }
+
+        window.addEventListener('load', loadFromLocal);
+        document.body.addEventListener('input', triggerSave);
+
+        // --- Fullscreen ---
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch((e) => {
@@ -564,36 +693,26 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 (Debounce防跳動 + Safari防當機) ---
-        // 使用全域變數儲存 timer，確保快速切換時可以取消上一次的聚焦請求
+        // --- Focus & Input Handling ---
         let focusTimer = null;
-
         function handleFocus(el) {
-            // 1. 每次觸發 focus 時，先清除上一次還沒執行的聚焦指令
-            //    這樣如果您快速從 A 點到 B，A 的延遲指令就會被取消，不會把焦點搶回去
             if (focusTimer) clearTimeout(focusTimer);
-
             const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-            const delay = isTouch ? 400 : 10;
+            const delay = isTouch ? 400 : 50;
 
             focusTimer = setTimeout(() => {
-                // 2. 雙重保險：只有當這個元素「仍然是」目前的使用者焦點時才執行
                 if (document.activeElement !== el) return;
-
                 if (el.tagName.toLowerCase() !== 'textarea') {
                     el.select();
                 }
-                
                 el.scrollIntoView({
                     behavior: isTouch ? 'auto' : 'smooth', 
                     block: 'center'
                 });
-                
                 focusTimer = null;
             }, delay); 
         }
 
-        // --- 翻頁核心 ---
         function updateFlipUnit(elementId, newValue) {
             const unit = document.getElementById(elementId);
             if (!unit) return;
@@ -613,9 +732,12 @@
             
             topSpan.innerText = nextVal;
             bottomSpan.innerText = currentVal; 
+
             unit.appendChild(frontLeaf);
             unit.appendChild(backLeaf);
+            
             unit.classList.add('flipping');
+
             setTimeout(() => {
                 bottomSpan.innerText = nextVal;
                 frontLeaf.remove();
@@ -624,26 +746,31 @@
             }, 350); 
         }
 
-        // --- 視角切換 ---
         const viewToggle = document.getElementById('viewToggle');
         const dirToggle = document.getElementById('dirToggle');
         const seatingContainer = document.getElementById('seatingContainer');
+        const classroomLayout = document.getElementById('classroomLayout');
 
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
             dirToggle.checked = !dirToggle.checked;
+            
             if (document.startViewTransition) {
                  document.startViewTransition(() => triggerViewChangeLogic());
             } else {
                  triggerViewChangeLogic();
             }
+            triggerSave();
         }
+
         function setDirection(isRight) {
             if (dirToggle.checked === isRight) return;
             dirToggle.checked = isRight;
             updateColumnLabels();
+            triggerSave();
         }
+
         viewToggle.addEventListener('change', () => {
             dirToggle.checked = !dirToggle.checked;
             if (document.startViewTransition) {
@@ -651,49 +778,53 @@
             } else {
                  triggerViewChangeLogic();
             }
+            triggerSave();
         });
+
         dirToggle.addEventListener('change', () => {
             updateColumnLabels();
+            triggerSave();
         });
 
         function getGridFromDOM() {
             const cols = Array.from(document.querySelectorAll('.seat-column'));
-            const grid = []; 
-            cols.forEach(colEl => {
+            // Captures structured grid including explicit empty seats and labels
+            return cols.map(colEl => {
                 const rowEls = Array.from(colEl.querySelectorAll('.seat-box'));
-                const colData = {
+                const labelVal = colEl.querySelector('.col-label-input').value;
+                return {
+                    label: labelVal,
                     seats: rowEls.map(seat => {
                         if (seat.classList.contains('empty')) return null;
                         const num = seat.querySelector('.seat-num').innerText;
                         const name = seat.querySelector('.seat-name').innerText;
-                        const vName = seat.style.viewTransitionName || '';
-                        return { id: num, name: name, vName: vName };
+                        return { id: num, name: name };
                     })
                 };
-                grid.push(colData);
             });
-            return grid;
         }
 
         function rotateGrid180(grid) {
             if (!grid.length) return [];
-            const newGrid = [...grid].reverse();
-            newGrid.forEach(col => {
-                col.seats = col.seats.reverse();
-            });
+            // FIX: Deep copy to prevent data pollution
+            const newGrid = grid.map(col => ({
+                ...col,
+                seats: [...col.seats].reverse()
+            })).reverse();
             return newGrid;
         }
 
         function renderGridToDOM(grid) {
             const container = document.getElementById('classroomLayout');
             container.innerHTML = '';
+            
             grid.forEach((colData, idx) => {
                 const div = document.createElement('div');
                 div.className = 'seat-column';
+                
                 colData.seats.forEach(seat => {
                     if (seat) {
                         const s = createSeat(seat.id, seat.name);
-                        if (seat.vName) s.style.viewTransitionName = seat.vName;
                         div.appendChild(s);
                     } else {
                         const s = createSeat('', '');
@@ -701,8 +832,11 @@
                         div.appendChild(s);
                     }
                 });
+                
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
+                // Restore label if saved
+                if (colData.label) inp.value = colData.label; 
                 div.appendChild(inp);
                 container.appendChild(div);
             });
@@ -710,9 +844,15 @@
 
         function triggerViewChangeLogic() {
             const isStudent = viewToggle.checked;
+            // Get current displayed grid
             const currentGrid = getGridFromDOM();
-            if (isStudent) seatingContainer.classList.add('student-view');
-            else seatingContainer.classList.remove('student-view');
+            
+            if (isStudent) {
+                seatingContainer.classList.add('student-view');
+            } else {
+                seatingContainer.classList.remove('student-view');
+            }
+            
             const newGrid = rotateGrid180(currentGrid);
             renderGridToDOM(newGrid);
             updateColumnLabels(); 
@@ -722,29 +862,42 @@
             const cols = document.querySelectorAll('.seat-column');
             const total = cols.length;
             const isRightStart = dirToggle.checked; 
+
             cols.forEach((col, index) => {
                 const inp = col.querySelector('.col-label-input');
+                // Only auto-update if it looks like default (to allow custom labels)
+                // For simplicity in this version, we enforce auto-labels on toggle change
                 let labelNum;
-                if (isRightStart) labelNum = total - index;
-                else labelNum = index + 1;
+                if (isRightStart) {
+                    labelNum = total - index;
+                } else {
+                    labelNum = index + 1;
+                }
                 inp.value = `第${labelNum}排`;
             });
         }
 
-        // --- Resizer ---
         function initResizable() {
             const setupResizer = (resizerId, targetId, direction, isBottomAnchor = false) => {
                 const resizer = document.getElementById(resizerId);
                 const target = document.getElementById(targetId);
                 if (!resizer || !target) return;
+
                 let startPos = 0, startSize = 0;
+
                 const onStart = (e) => {
                     startPos = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     const rect = target.getBoundingClientRect();
                     startSize = direction === 'width' ? rect.width : rect.height;
-                    if (direction === 'width') target.style.width = startSize + 'px';
-                    else target.style.height = startSize + 'px';
+                    
+                    if (direction === 'width') {
+                        target.style.width = startSize + 'px';
+                    } else {
+                        target.style.height = startSize + 'px';
+                    }
+
                     target.style.flex = 'none';
+
                     document.body.classList.add('is-resizing');
                     if(direction !== 'width') document.body.classList.add('row-resize');
                     window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive:false});
@@ -754,11 +907,13 @@
                     if (e.type === 'touchmove') e.preventDefault();
                     let curr = direction === 'width' ? (e.type.includes('touch')?e.touches[0].clientX:e.clientX) : (e.type.includes('touch')?e.touches[0].clientY:e.clientY);
                     let newSize = isBottomAnchor ? startSize + (startPos - curr) : startSize + (curr - startPos);
+                    
                     if (newSize > 40) { 
                         if (direction === 'width') {
                             const parentWidth = target.parentElement.clientWidth;
                             const maxWidth = parentWidth - 220; 
                             if (newSize > maxWidth) newSize = maxWidth;
+                            
                             target.style.width = newSize+'px';
                         } else { 
                             target.style.height = newSize+'px'; 
@@ -779,12 +934,14 @@
         }
         window.addEventListener('DOMContentLoaded', initResizable);
 
-        // --- ResizeObserver ---
         const headerRow = document.getElementById('headerRow');
         const headerObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                if (entry.contentRect.height < 150) headerRow.classList.add('compact');
-                else headerRow.classList.remove('compact');
+                if (entry.contentRect.height < 150) {
+                    headerRow.classList.add('compact');
+                } else {
+                    headerRow.classList.remove('compact');
+                }
             }
         });
         headerObserver.observe(headerRow);
@@ -792,18 +949,22 @@
         const attCard = document.getElementById('attendanceCard');
         const attObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                if (entry.contentRect.height < 140) attCard.classList.add('compact');
-                else attCard.classList.remove('compact');
+                if (entry.contentRect.height < 140) {
+                    attCard.classList.add('compact');
+                } else {
+                    attCard.classList.remove('compact');
+                }
             }
         });
         attObserver.observe(attCard);
 
-        // --- Drag & Drop ---
+
         let dragItem=null, ghostItem=null, dragStartX=0, dragStartY=0;
         function enableDragAndDrop(seat) { seat.addEventListener('mousedown', handleDragStart); seat.addEventListener('touchstart', handleDragStart, {passive:false}); }
         function handleDragStart(e) {
             if(e.target.classList.contains('seat-close') || (e.type==='mousedown'&&e.button!==0)) return;
             if(this.classList.contains('empty')) return;
+            
             e.preventDefault(); dragItem=this;
             dragStartX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
             dragStartY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
@@ -840,11 +1001,15 @@
                     const srcH=dragItem.innerHTML, srcC=dragItem.className;
                     const srcV=dragItem.style.viewTransitionName; 
                     const tgtV=t.style.viewTransitionName;
+
                     dragItem.innerHTML=t.innerHTML; dragItem.className=t.className;
                     dragItem.style.viewTransitionName = tgtV;
+
                     t.innerHTML=srcH; t.className=srcC;
                     t.style.viewTransitionName = srcV;
+
                     updateStudentsFromDOM();
+                    triggerSave();
                 }
             }
             dragItem=null;
@@ -852,7 +1017,6 @@
             window.removeEventListener('mouseup', handleDragEnd); window.removeEventListener('touchend', handleDragEnd);
         }
 
-        // --- Clock & Schedule ---
         function formatTimeInput(i){ 
             let v=i.value.replace(/[^0-9:]/g,''); 
             if(!v)return;
@@ -860,6 +1024,7 @@
             let p=v.split(':'), h=parseInt(p[0]||0), m=parseInt(p[1]||0);
             if(h>23)h=23; if(m>59)m=59;
             i.value=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+            triggerSave();
         }
 
         let timeOffset=0;
@@ -912,61 +1077,122 @@
             d.className='subject-item';
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
+            
             const inp = d.querySelector('.subject-input');
-            if(inp) { inp.focus(); setTimeout(() => { inp.select(); }, 10); }
+            if(inp) {
+                inp.focus();
+                setTimeout(() => {
+                    inp.select();
+                }, 10);
+            }
+            triggerSave();
         }
-        function removeSubject(b){ b.closest('.subject-item').remove(); }
+        function removeSubject(b){ 
+            b.closest('.subject-item').remove(); 
+            triggerSave();
+        }
         
         let students=[{id:"1",name:"王妍心"},{id:"2",name:"李大華"},{id:"3",name:"張小明"},{id:"4",name:"陳阿寶"},{id:"5",name:"林志豪"},{id:"6",name:"許家豪"},{id:"7",name:"吳雅婷"},{id:"8",name:"蔡欣怡"}];
+        
         function createSeat(n,nm){
             const s=document.createElement('div'); s.className='seat-box';
             s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             s.onclick=function(){ if(this.classList.contains('empty')) addNewStudent(this); };
-            if(n) s.style.viewTransitionName = 'seat-' + n;
-            else if (nm) s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
+            
+            if(n) {
+                s.style.viewTransitionName = 'seat-' + n;
+            } else if (nm) {
+                const safeName = btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
+                s.style.viewTransitionName = 'seat-name-' + safeName + '-' + Math.floor(Math.random()*10000);
+            }
             enableDragAndDrop(s); return s;
         }
         function convertToEmpty(el){ 
-            el.className='seat-box empty'; el.innerHTML='<div class="add-sign">+</div>'; 
-            el.style.viewTransitionName = ''; updateStudentsFromDOM(); 
+            el.className='seat-box empty'; 
+            el.innerHTML='<div class="add-sign">+</div>'; 
+            el.style.viewTransitionName = ''; 
+            updateStudentsFromDOM(); 
+            triggerSave();
         }
         
         let targetSeatElement = null; 
+
         function addNewStudent(el){
             targetSeatElement = el; 
             const modal = document.getElementById('singleStudentModal');
             document.getElementById('newStudentId').value = ''; 
             document.getElementById('newStudentName').value = ''; 
             modal.style.display = 'flex';
-            setTimeout(() => { document.getElementById('newStudentId').focus(); }, 300);
+            
+            setTimeout(() => {
+                const idInput = document.getElementById('newStudentId');
+                idInput.focus();
+            }, 300);
         }
-        function closeSingleStudentModal() { document.getElementById('singleStudentModal').style.display = 'none'; targetSeatElement = null; }
+
+        function closeSingleStudentModal() {
+            document.getElementById('singleStudentModal').style.display = 'none';
+            targetSeatElement = null;
+        }
+
         function confirmAddStudent() {
             if (!targetSeatElement) return;
             const n = document.getElementById('newStudentId').value.trim();
             const nm = document.getElementById('newStudentName').value.trim();
-            if (!nm) { alert("請輸入姓名！"); return; }
+            
+            if (!nm) {
+                alert("請輸入姓名！");
+                return;
+            }
+
             targetSeatElement.className = 'seat-box';
             targetSeatElement.innerHTML = `<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
-            if (n) targetSeatElement.style.viewTransitionName = 'seat-' + n;
-            else targetSeatElement.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
-            updateStudentsFromDOM(); closeSingleStudentModal();
+            
+            if (n) {
+                targetSeatElement.style.viewTransitionName = 'seat-' + n;
+            } else {
+                const safeName = btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
+                targetSeatElement.style.viewTransitionName = 'seat-name-' + safeName + '-' + Math.floor(Math.random()*10000);
+            }
+            
+            updateStudentsFromDOM();
+            closeSingleStudentModal();
+            triggerSave();
         }
 
-        document.getElementById('newStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('newStudentName').focus(); });
-        document.getElementById('newStudentName').addEventListener('keydown', function(e) { if (e.key === 'Enter') confirmAddStudent(); });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (document.getElementById('modal').style.display === 'flex') closeModal();
-                if (document.getElementById('singleStudentModal').style.display === 'flex') closeSingleStudentModal();
-            }
+        document.getElementById('newStudentId').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('newStudentName').focus();
         });
-        ['modal', 'singleStudentModal'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.addEventListener('click', function(e) { if (e.target === this) { if(id === 'modal') closeModal(); else closeSingleStudentModal(); }});
+        document.getElementById('newStudentName').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') confirmAddStudent();
         });
 
-        window.deleteSeat = function(e, b) { e.stopPropagation(); convertToEmpty(b.parentElement); }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('modal');
+                const singleModal = document.getElementById('singleStudentModal');
+                if (modal.style.display === 'flex') closeModal();
+                if (singleModal.style.display === 'flex') closeSingleStudentModal();
+            }
+        });
+        
+        ['modal', 'singleStudentModal'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        if(id === 'modal') closeModal();
+                        else closeSingleStudentModal();
+                    }
+                });
+            }
+        });
+
+        window.deleteSeat = function(e, b) { 
+            e.stopPropagation(); 
+            convertToEmpty(b.parentElement);
+        }
+
         function updateStudentsFromDOM(){
             const tmp=[]; document.querySelectorAll('.seat-column').forEach(c=>{
                 c.querySelectorAll('.seat-box:not(.empty)').forEach(s=>{ tmp.push({id:s.querySelector('.seat-num').innerText, name:s.querySelector('.seat-name').innerText}); });
@@ -979,48 +1205,89 @@
             const div=document.createElement('div'); div.className='seat-column';
             for(let i=0;i<max;i++){ const s=createSeat('',''); convertToEmpty(s); div.appendChild(s); }
             const inp=document.createElement('input'); inp.className='col-label-input';
-            div.appendChild(inp); c.appendChild(div); updateColumnLabels();
+            div.appendChild(inp);
+            c.appendChild(div);
+            updateColumnLabels();
+            triggerSave();
         }
-        window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels();} }
-        window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); }
-        window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); }
+        window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels(); triggerSave();} }
+        window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); triggerSave(); }
+        window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); triggerSave(); }
         
         function reshuffleSeating(){
             const s=document.querySelectorAll('.seat-box:not(.empty)');
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
             if(!pool.length)return;
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+            
             const doShuffle = () => {
                 s.forEach((x,i)=>{ 
                     x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
-                    if (pool[i].id) x.style.viewTransitionName = 'seat-' + pool[i].id;
-                    else x.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(pool[i].name)).replace(/[^a-zA-Z0-9]/g, '');
+                    
+                    if (pool[i].id) {
+                        x.style.viewTransitionName = 'seat-' + pool[i].id;
+                    } else {
+                        const safeName = btoa(encodeURIComponent(pool[i].name)).replace(/[^a-zA-Z0-9]/g, '');
+                        x.style.viewTransitionName = 'seat-name-' + safeName + '-' + Math.floor(Math.random()*10000);
+                    }
                 });
                 students=pool;
             };
-            if (document.startViewTransition) document.startViewTransition(doShuffle); else doShuffle();
+
+            if (document.startViewTransition) {
+                document.startViewTransition(doShuffle);
+            } else {
+                doShuffle();
+            }
+            triggerSave();
         }
+
         function refillSeating(arr){
+            // 重抓 cols 確保 reference 正確
             let cols=document.querySelectorAll('.seat-column');
+            
             if(!cols.length){ students=arr; generateSeatingInitial(); return; }
+            
             let pool=[...arr];
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            let total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
-            while(total<pool.length){ addColumn(); cols=document.querySelectorAll('.seat-column'); total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); }
+            
+            let total=0; 
+            cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
+            
+            while(total<pool.length){ 
+                addColumn(); 
+                cols=document.querySelectorAll('.seat-column'); 
+                total=0; 
+                cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); 
+            }
+            
             const doRefill = () => {
                 let idx=0;
-                cols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
+                // 在執行當下重新獲取 DOM
+                const currentCols = document.querySelectorAll('.seat-column');
+                currentCols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
                     if(idx<pool.length){ 
                         const p=pool[idx++]; s.className='seat-box'; 
                         s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${p.id}</div><div class="seat-name">${p.name}</div>`; 
-                        if (p.id) s.style.viewTransitionName = 'seat-' + p.id;
-                        else s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(p.name)).replace(/[^a-zA-Z0-9]/g, '');
+                        
+                        if (p.id) {
+                            s.style.viewTransitionName = 'seat-' + p.id;
+                        } else {
+                            const safeName = btoa(encodeURIComponent(p.name)).replace(/[^a-zA-Z0-9]/g, '');
+                            s.style.viewTransitionName = 'seat-name-' + safeName + '-' + Math.floor(Math.random()*10000);
+                        }
                     }
                     else convertToEmpty(s);
                 })});
                 students=pool;
             };
-            if(document.startViewTransition) document.startViewTransition(doRefill); else doRefill();
+
+            if(document.startViewTransition) {
+                document.startViewTransition(doRefill);
+            } else {
+                doRefill();
+            }
+            triggerSave();
         }
         function generateSeatingInitial(){
             const c=document.getElementById('classroomLayout'); c.innerHTML='';
@@ -1031,12 +1298,15 @@
                 const col=document.createElement('div'); col.className='seat-column';
                 for(let r=0;r<6;r++){
                     if(idx<pool.length){ 
-                        const p=pool[idx++]; const s = createSeat(p.id,p.name); col.appendChild(s); 
+                        const p=pool[idx++]; 
+                        const s = createSeat(p.id,p.name);
+                        col.appendChild(s); 
                     }
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
                 const inp=document.createElement('input'); inp.className='col-label-input';
-                col.appendChild(inp); c.appendChild(col);
+                col.appendChild(inp);
+                c.appendChild(col);
             }
             updateColumnLabels();
         }
@@ -1052,21 +1322,32 @@
                 textarea.scrollTop = 0;
             }, 300); 
         }
-        function closeModal(){ document.getElementById('modal').style.display='none'; }
+        
+        function closeModal(){ 
+            const modal = document.getElementById('modal');
+            modal.style.display='none'; 
+        }
+        
         function saveStudents(){
             const val=document.getElementById('studentListInput').value;
             const arr=val.split('\n').map(x=>{ 
-                x=x.trim(); if(!x) return null; 
+                x=x.trim(); 
+                if(!x) return null; 
                 const match = x.match(/^(\d+)[\s\.\,\、\t]+(.+)$/);
-                if (match) return { id: match[1], name: match[2].trim() };
-                else return { id: "", name: x };
+                if (match) {
+                    return { id: match[1], name: match[2].trim() };
+                } else {
+                    return { id: "", name: x };
+                }
             }).filter(x=>x);
-            if(arr.length){ refillSeating(arr); closeModal(); } else alert("名單為空");
+
+            if(arr.length){ refillSeating(arr); closeModal(); triggerSave(); } else alert("名單為空");
         }
 
         setInterval(updateClock, 1000);
         updateClock();
-        generateSeatingInitial();
+        // 初始化載入交由 loadFromLocal 處理，避免覆蓋
+        // generateSeatingInitial(); 
     </script>
 </body>
 </html>
