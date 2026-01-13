@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0102.10</title>
+    <title>監考儀表板 v0102.11 (自動存檔)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -551,7 +551,125 @@
     </div>
 
     <script>
-        // --- 全螢幕 ---
+        // --- Auto Save & Load ---
+        const SAVE_KEY = 'dashboardData_v2';
+
+        function saveToLocal() {
+            // 1. Subjects
+            const subjects = [];
+            document.querySelectorAll('.subject-item').forEach(item => {
+                subjects.push({
+                    name: item.querySelector('.subject-input').value,
+                    start: item.querySelector('.time-start').value,
+                    end: item.querySelector('.time-end').value
+                });
+            });
+
+            // 2. Attendance
+            const attInputs = document.querySelectorAll('.att-val');
+            const attendance = {
+                expected: attInputs[0].value,
+                actual: attInputs[1].value,
+                missing: attInputs[2].value
+            };
+
+            // 3. Students (Global Variable)
+            // 4. View Settings
+            const settings = {
+                isStudentView: document.getElementById('viewToggle').checked,
+                isRightStart: document.getElementById('dirToggle').checked
+            };
+
+            const data = {
+                students: students,
+                subjects: subjects,
+                attendance: attendance,
+                settings: settings
+            };
+
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        }
+
+        function loadFromLocal() {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (!raw) return; // No saved data
+
+            try {
+                const data = JSON.parse(raw);
+
+                // Restore Students
+                if (data.students && Array.isArray(data.students)) {
+                    students = data.students;
+                    generateSeatingInitial(); // Re-render grid
+                }
+
+                // Restore Subjects
+                if (data.subjects && Array.isArray(data.subjects)) {
+                    const list = document.getElementById('subjectList');
+                    // Remove existing items (except button)
+                    const existing = list.querySelectorAll('.subject-item');
+                    existing.forEach(el => el.remove());
+                    
+                    const addBtn = document.getElementById('addSubjectBtn');
+                    
+                    data.subjects.forEach(sub => {
+                        const d = document.createElement('div');
+                        d.className = 'subject-item';
+                        d.innerHTML = `<div class="subject-header"><input type="text" class="subject-input" value="${sub.name}" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)" value="${sub.start}"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)" value="${sub.end}"></div>`;
+                        list.insertBefore(d, addBtn);
+                    });
+                }
+
+                // Restore Attendance
+                if (data.attendance) {
+                    const attInputs = document.querySelectorAll('.att-val');
+                    if (attInputs[0]) attInputs[0].value = data.attendance.expected;
+                    if (attInputs[1]) attInputs[1].value = data.attendance.actual;
+                    if (attInputs[2]) attInputs[2].value = data.attendance.missing;
+                }
+
+                // Restore View Settings
+                if (data.settings) {
+                    const vToggle = document.getElementById('viewToggle');
+                    const dToggle = document.getElementById('dirToggle');
+                    
+                    if (vToggle.checked !== data.settings.isStudentView) {
+                        vToggle.checked = data.settings.isStudentView;
+                        // Trigger change logic manually if needed, or just set class
+                        if(data.settings.isStudentView) document.getElementById('seatingContainer').classList.add('student-view');
+                    }
+                    
+                    if (dToggle.checked !== data.settings.isRightStart) {
+                        dToggle.checked = data.settings.isRightStart;
+                    }
+                    // Re-render to apply direction/rotation
+                    const currentGrid = getGridFromDOM(); // Get current (from generateSeatingInitial)
+                    // If stored view was student, we might need to rotate, but generateSeatingInitial creates Teacher View by default.
+                    // Let's just re-trigger the logic to be safe
+                    if (data.settings.isStudentView) {
+                        // Apply student view transformation
+                       triggerViewChangeLogic();
+                    }
+                    updateColumnLabels();
+                }
+
+            } catch (e) {
+                console.error("Load failed", e);
+            }
+        }
+
+        // Auto-save trigger (Debounced)
+        let saveTimer = null;
+        function triggerSave() {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveToLocal, 1000); // Save 1s after change
+        }
+
+        // Listen for changes
+        window.addEventListener('load', loadFromLocal);
+        document.body.addEventListener('input', triggerSave); // Covers all inputs
+        
+        // --- Fullscreen ---
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch((e) => {
@@ -564,36 +682,24 @@
             }
         }
 
-        // --- 輸入框聚焦邏輯 (Debounce防跳動 + Safari防當機) ---
-        // 使用全域變數儲存 timer，確保快速切換時可以取消上一次的聚焦請求
+        // --- Input Focus Logic ---
         let focusTimer = null;
-
         function handleFocus(el) {
-            // 1. 每次觸發 focus 時，先清除上一次還沒執行的聚焦指令
-            //    這樣如果您快速從 A 點到 B，A 的延遲指令就會被取消，不會把焦點搶回去
             if (focusTimer) clearTimeout(focusTimer);
-
             const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-            const delay = isTouch ? 400 : 10;
+            const delay = isTouch ? 400 : 50; // Optimized: 50ms for PC
 
             focusTimer = setTimeout(() => {
-                // 2. 雙重保險：只有當這個元素「仍然是」目前的使用者焦點時才執行
                 if (document.activeElement !== el) return;
-
                 if (el.tagName.toLowerCase() !== 'textarea') {
                     el.select();
                 }
-                
-                el.scrollIntoView({
-                    behavior: isTouch ? 'auto' : 'smooth', 
-                    block: 'center'
-                });
-                
+                el.scrollIntoView({ behavior: isTouch ? 'auto' : 'smooth', block: 'center' });
                 focusTimer = null;
             }, delay); 
         }
 
-        // --- 翻頁核心 ---
+        // --- Flip Clock ---
         function updateFlipUnit(elementId, newValue) {
             const unit = document.getElementById(elementId);
             if (!unit) return;
@@ -606,7 +712,6 @@
             const frontLeaf = document.createElement('div');
             frontLeaf.className = 'flip-leaf-front';
             frontLeaf.innerHTML = `<span>${currentVal}</span>`;
-            
             const backLeaf = document.createElement('div');
             backLeaf.className = 'flip-leaf-back';
             backLeaf.innerHTML = `<span>${nextVal}</span>`;
@@ -624,7 +729,7 @@
             }, 350); 
         }
 
-        // --- 視角切換 ---
+        // --- View Control ---
         const viewToggle = document.getElementById('viewToggle');
         const dirToggle = document.getElementById('dirToggle');
         const seatingContainer = document.getElementById('seatingContainer');
@@ -638,11 +743,13 @@
             } else {
                  triggerViewChangeLogic();
             }
+            triggerSave(); // Save setting
         }
         function setDirection(isRight) {
             if (dirToggle.checked === isRight) return;
             dirToggle.checked = isRight;
             updateColumnLabels();
+            triggerSave(); // Save setting
         }
         viewToggle.addEventListener('change', () => {
             dirToggle.checked = !dirToggle.checked;
@@ -651,9 +758,11 @@
             } else {
                  triggerViewChangeLogic();
             }
+            triggerSave();
         });
         dirToggle.addEventListener('change', () => {
             updateColumnLabels();
+            triggerSave();
         });
 
         function getGridFromDOM() {
@@ -845,6 +954,7 @@
                     t.innerHTML=srcH; t.className=srcC;
                     t.style.viewTransitionName = srcV;
                     updateStudentsFromDOM();
+                    triggerSave(); // Save on drop
                 }
             }
             dragItem=null;
@@ -860,6 +970,7 @@
             let p=v.split(':'), h=parseInt(p[0]||0), m=parseInt(p[1]||0);
             if(h>23)h=23; if(m>59)m=59;
             i.value=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+            triggerSave(); // Save time change
         }
 
         let timeOffset=0;
@@ -913,9 +1024,10 @@
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
             document.getElementById('subjectList').insertBefore(d, document.getElementById('addSubjectBtn'));
             const inp = d.querySelector('.subject-input');
-            if(inp) { inp.focus(); setTimeout(() => { inp.select(); }, 10); }
+            if(inp) { inp.focus(); setTimeout(() => { inp.select(); }, 50); }
+            triggerSave();
         }
-        function removeSubject(b){ b.closest('.subject-item').remove(); }
+        function removeSubject(b){ b.closest('.subject-item').remove(); triggerSave(); }
         
         let students=[{id:"1",name:"王妍心"},{id:"2",name:"李大華"},{id:"3",name:"張小明"},{id:"4",name:"陳阿寶"},{id:"5",name:"林志豪"},{id:"6",name:"許家豪"},{id:"7",name:"吳雅婷"},{id:"8",name:"蔡欣怡"}];
         function createSeat(n,nm){
@@ -928,7 +1040,7 @@
         }
         function convertToEmpty(el){ 
             el.className='seat-box empty'; el.innerHTML='<div class="add-sign">+</div>'; 
-            el.style.viewTransitionName = ''; updateStudentsFromDOM(); 
+            el.style.viewTransitionName = ''; updateStudentsFromDOM(); triggerSave();
         }
         
         let targetSeatElement = null; 
@@ -950,7 +1062,7 @@
             targetSeatElement.innerHTML = `<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${n}</div><div class="seat-name">${nm}</div>`;
             if (n) targetSeatElement.style.viewTransitionName = 'seat-' + n;
             else targetSeatElement.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(nm)).replace(/[^a-zA-Z0-9]/g, '');
-            updateStudentsFromDOM(); closeSingleStudentModal();
+            updateStudentsFromDOM(); closeSingleStudentModal(); triggerSave();
         }
 
         document.getElementById('newStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('newStudentName').focus(); });
@@ -979,67 +1091,11 @@
             const div=document.createElement('div'); div.className='seat-column';
             for(let i=0;i<max;i++){ const s=createSeat('',''); convertToEmpty(s); div.appendChild(s); }
             const inp=document.createElement('input'); inp.className='col-label-input';
-            div.appendChild(inp); c.appendChild(div); updateColumnLabels();
+            div.appendChild(inp); c.appendChild(div); updateColumnLabels(); triggerSave();
         }
-        window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels();} }
-        window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); }
-        window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); }
-        
-        function reshuffleSeating(){
-            const s=document.querySelectorAll('.seat-box:not(.empty)');
-            let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
-            if(!pool.length)return;
-            for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            const doShuffle = () => {
-                s.forEach((x,i)=>{ 
-                    x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
-                    if (pool[i].id) x.style.viewTransitionName = 'seat-' + pool[i].id;
-                    else x.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(pool[i].name)).replace(/[^a-zA-Z0-9]/g, '');
-                });
-                students=pool;
-            };
-            if (document.startViewTransition) document.startViewTransition(doShuffle); else doShuffle();
-        }
-        function refillSeating(arr){
-            let cols=document.querySelectorAll('.seat-column');
-            if(!cols.length){ students=arr; generateSeatingInitial(); return; }
-            let pool=[...arr];
-            for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            let total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
-            while(total<pool.length){ addColumn(); cols=document.querySelectorAll('.seat-column'); total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); }
-            const doRefill = () => {
-                let idx=0;
-                cols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
-                    if(idx<pool.length){ 
-                        const p=pool[idx++]; s.className='seat-box'; 
-                        s.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${p.id}</div><div class="seat-name">${p.name}</div>`; 
-                        if (p.id) s.style.viewTransitionName = 'seat-' + p.id;
-                        else s.style.viewTransitionName = 'seat-name-' + btoa(encodeURIComponent(p.name)).replace(/[^a-zA-Z0-9]/g, '');
-                    }
-                    else convertToEmpty(s);
-                })});
-                students=pool;
-            };
-            if(document.startViewTransition) document.startViewTransition(doRefill); else doRefill();
-        }
-        function generateSeatingInitial(){
-            const c=document.getElementById('classroomLayout'); c.innerHTML='';
-            let pool=[...students];
-            for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            let idx=0;
-            for(let i=0;i<7;i++){
-                const col=document.createElement('div'); col.className='seat-column';
-                for(let r=0;r<6;r++){
-                    if(idx<pool.length){ 
-                        const p=pool[idx++]; const s = createSeat(p.id,p.name); col.appendChild(s); 
-                    }
-                    else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
-                }
-                const inp=document.createElement('input'); inp.className='col-label-input';
-                col.appendChild(inp); c.appendChild(col);
-            }
-            updateColumnLabels();
-        }
+        window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels(); triggerSave();} }
+        window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); triggerSave(); }
+        window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); triggerSave(); }
         
         function openModal(){ 
             const modal = document.getElementById('modal');
@@ -1061,7 +1117,7 @@
                 if (match) return { id: match[1], name: match[2].trim() };
                 else return { id: "", name: x };
             }).filter(x=>x);
-            if(arr.length){ refillSeating(arr); closeModal(); } else alert("名單為空");
+            if(arr.length){ refillSeating(arr); closeModal(); triggerSave(); } else alert("名單為空");
         }
 
         setInterval(updateClock, 1000);
