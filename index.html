@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0115.2 (雙重鎖定版)</title>
+    <title>監考儀表板 v0115.3 (重置回歸版)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -14,7 +14,7 @@
             --c-teal:   #7EBDC2;
             --c-yellow: #F3DFA2;
             --c-linen:  #EFE6DD;
-            --c-green:  #70A9A1; /* 新增綠色用於解鎖狀態 */
+            --c-green:  #70A9A1;
             --bg-body:  #f0f0f0;
             --clock-bg: #333;
             --clock-text:#f0f0f0;
@@ -413,7 +413,7 @@
 </head>
 <body class="no-transition">
 
-    <div class="version-tag">v0115.2</div>
+    <div class="version-tag">v0115.3</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -526,6 +526,7 @@
                     <button class="btn btn-red" id="dragLockBtn" onclick="toggleDragLock()">🔒 鎖定</button>
                     <button class="btn btn-sec" onclick="openModal()">📋 名單</button>
                     <button class="btn btn-main" onclick="openPasswordModal('shuffle')">🔄 重排</button>
+                    <button class="btn btn-red" onclick="openPasswordModal('reset')">⚠️ 重置</button>
                 </div>
             </div>
 
@@ -584,13 +585,14 @@
 
     <script>
         // --- 設定與常數 ---
-        const SAVE_KEY = 'dashboard_v0115_2_layout';
+        const SAVE_KEY = 'dashboard_v0115_3_layout';
         const SHUFFLE_PASSWORD = "1013"; 
         const DRAG_PASSWORD = "1013"; 
+        const RESET_PASSWORD = "1013"; 
         
         // 狀態變數
-        let isDragLocked = true; // 預設鎖定
-        let passwordContext = ""; // 用來判斷密碼是用於重排還是解鎖 ('shuffle' | 'drag')
+        let isDragLocked = true; 
+        let passwordContext = ""; // 'shuffle' | 'drag' | 'reset'
 
         function saveToLocal() {
             const subjects = [];
@@ -612,7 +614,6 @@
             const settings = {
                 isStudentView: document.getElementById('viewToggle').checked,
                 isRightStart: document.getElementById('dirToggle').checked
-                // 我們不儲存 isDragLocked，讓每次重新載入都回復鎖定狀態，比較安全
             };
 
             const gridLayout = getGridFromDOM().map(col => ({
@@ -693,16 +694,11 @@
                 generateSeatingInitial();
             }
 
-            updateDragLockUI(); // 初始化按鈕狀態
+            updateDragLockUI(); 
 
             setTimeout(() => {
                 document.body.classList.remove('no-transition');
             }, 100);
-        }
-
-        function resetAll() {
-             // 這裡不需密碼，因為已經很危險了，老師應該不會亂按
-             // 若需要也可加上
         }
 
         let saveTimer = null;
@@ -717,10 +713,8 @@
         // --- Lock Logic ---
         function toggleDragLock() {
             if (isDragLocked) {
-                // 如果目前是鎖定，想要解鎖 -> 跳密碼
                 openPasswordModal('drag');
             } else {
-                // 如果目前是解鎖，想要鎖定 -> 直接鎖
                 isDragLocked = true;
                 updateDragLockUI();
             }
@@ -733,7 +727,7 @@
             if (isDragLocked) {
                 btn.innerHTML = '🔒 鎖定';
                 btn.className = 'btn btn-red';
-                container.classList.add('locked'); // CSS會處理cursor和隱藏X
+                container.classList.add('locked');
             } else {
                 btn.innerHTML = '🔓 編輯中';
                 btn.className = 'btn btn-green';
@@ -1029,9 +1023,7 @@
         let dragItem=null, ghostItem=null, dragStartX=0, dragStartY=0;
         function enableDragAndDrop(seat) { seat.addEventListener('mousedown', handleDragStart); seat.addEventListener('touchstart', handleDragStart, {passive:false}); }
         function handleDragStart(e) {
-            // --- 鎖定檢查 ---
             if (isDragLocked) return; 
-            // ----------------
 
             if(e.target.classList.contains('seat-close') || (e.type==='mousedown'&&e.button!==0)) return;
             if(this.classList.contains('empty')) return;
@@ -1189,7 +1181,7 @@
         let targetSeatElement = null; 
 
         function addNewStudent(el){
-            if (isDragLocked) return; // 鎖定狀態下不能新增
+            if (isDragLocked) return; 
             targetSeatElement = el; 
             const modal = document.getElementById('singleStudentModal');
             document.getElementById('newStudentId').value = ''; 
@@ -1250,6 +1242,8 @@
                 title.innerText = '🔄 重排確認';
             } else if (type === 'drag') {
                 title.innerText = '🔓 解鎖編輯';
+            } else if (type === 'reset') {
+                title.innerText = '⚠️ 重置確認';
             }
 
             input.value = '';
@@ -1273,9 +1267,7 @@
                     closePasswordModal();
                     reshuffleSeating();
                 } else {
-                    alert("重排密碼錯誤！");
-                    input.value = '';
-                    input.focus();
+                    alert("密碼錯誤！"); input.value = ''; input.focus();
                 }
             } else if (passwordContext === 'drag') {
                 if (pwd === DRAG_PASSWORD) {
@@ -1283,10 +1275,22 @@
                     updateDragLockUI();
                     closePasswordModal();
                 } else {
-                    alert("解鎖密碼錯誤！");
-                    input.value = '';
-                    input.focus();
+                    alert("密碼錯誤！"); input.value = ''; input.focus();
                 }
+            } else if (passwordContext === 'reset') {
+                if (pwd === RESET_PASSWORD) {
+                    closePasswordModal();
+                    performReset();
+                } else {
+                    alert("密碼錯誤！"); input.value = ''; input.focus();
+                }
+            }
+        }
+        
+        function performReset() {
+            if(confirm("確定要清空所有資料並還原預設值嗎？\n此動作無法復原！")) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
             }
         }
         
@@ -1320,7 +1324,6 @@
         });
 
         window.deleteSeat = function(e, b) { 
-            // 鎖定狀態下不能刪除
             if (isDragLocked) return; 
             e.stopPropagation(); 
             convertToEmpty(b.parentElement);
@@ -1427,10 +1430,8 @@
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
                 const inp=document.createElement('input'); inp.className='col-label-input';
-                // Initial generation label logic
                 let labelNum = isRight ? (7 - i) : (i + 1);
                 inp.value = `第${labelNum}排`;
-                
                 col.appendChild(inp);
                 c.appendChild(col);
             }
