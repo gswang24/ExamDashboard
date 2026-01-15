@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0114.2 (穩定版)</title>
+    <title>監考儀表板 v0115.2 (雙重鎖定版)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -14,6 +14,7 @@
             --c-teal:   #7EBDC2;
             --c-yellow: #F3DFA2;
             --c-linen:  #EFE6DD;
+            --c-green:  #70A9A1; /* 新增綠色用於解鎖狀態 */
             --bg-body:  #f0f0f0;
             --clock-bg: #333;
             --clock-text:#f0f0f0;
@@ -32,7 +33,6 @@
             mix-blend-mode: normal;
         }
         
-        /* 載入時禁止動畫，防止跳動 */
         body.no-transition * {
             view-transition-name: none !important;
         }
@@ -319,6 +319,7 @@
         .btn-main { background: var(--c-grey); color: #fff; }
         .btn-sec { background: #fff; color: var(--c-grey); }
         .btn-red { background: var(--c-red); color: #fff; border-color: var(--c-grey); }
+        .btn-green { background: var(--c-green); color: #fff; border-color: var(--c-grey); }
         .btn-tiny { font-size: 0.8rem; padding: 4px 8px; background: #fff; opacity: 0.9; }
 
         .classroom-layout {
@@ -351,6 +352,11 @@
             overflow: hidden; touch-action: none; 
             container-type: size;
         }
+        /* Locked State */
+        .seating-container.locked .seat-box { cursor: default; }
+        .seating-container.locked .seat-close { display: none !important; }
+        .seating-container.locked .seat-box:active { cursor: default; transform: none; }
+
         .seat-box:active { cursor: grabbing; transform: scale(0.98); }
         .seat-ghost { position: fixed; z-index: 9999; pointer-events: none; opacity: 0.8; box-shadow: 4px 4px 10px rgba(0,0,0,0.2); transform: scale(1.05) rotate(2deg); background: #fff; border: 2px solid var(--c-teal); }
         .seat-box.drag-over { background-color: var(--c-teal); border-color: var(--c-grey); color: #fff; }
@@ -396,7 +402,7 @@
         }
         
         .modal h3 { margin-top: 0; color: var(--c-grey); }
-        .modal input[type="text"], .modal textarea { width: 100%; margin: 5px 0 15px 0; padding: 10px; border: 2px solid var(--c-grey); border-radius: 8px; font-size: 1rem; }
+        .modal input[type="text"], .modal input[type="password"], .modal textarea { width: 100%; margin: 5px 0 15px 0; padding: 10px; border: 2px solid var(--c-grey); border-radius: 8px; font-size: 1rem; }
         .modal textarea { height: 200px; }
         .modal-footer { text-align: right; gap: 15px; display: flex; justify-content: flex-end; }
         .btn-delete { background: none; border: none; color: #ccc; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
@@ -407,7 +413,7 @@
 </head>
 <body class="no-transition">
 
-    <div class="version-tag">v0114.2</div>
+    <div class="version-tag">v0115.2</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -489,37 +495,37 @@
 
         <div class="resizer resizer-v" id="resizerContent"></div>
 
-        <div class="seating-container" id="seatingContainer">
+        <div class="seating-container locked" id="seatingContainer">
             <div class="seating-toolbar">
                 <div style="display:flex; gap:5px;">
-                    <button class="btn btn-tiny" onclick="addColumn()">+ 增排(直)</button>
-                    <button class="btn btn-tiny" onclick="removeColumn()">- 刪排(直)</button>
-                    <button class="btn btn-tiny" onclick="addRow()">+ 增列(橫)</button>
-                    <button class="btn btn-tiny" onclick="removeRow()">- 刪列(橫)</button>
+                    <button class="btn btn-tiny" onclick="addColumn()">+ 增排</button>
+                    <button class="btn btn-tiny" onclick="removeColumn()">- 刪排</button>
+                    <button class="btn btn-tiny" onclick="addRow()">+ 增列</button>
+                    <button class="btn btn-tiny" onclick="removeRow()">- 刪列</button>
                 </div>
                 
                 <div class="view-control-group">
-                    <span class="view-label" onclick="setDirection(false)">左起第1排</span>
+                    <span class="view-label" onclick="setDirection(false)">左起</span>
                     <label class="switch">
                         <input type="checkbox" id="dirToggle">
                         <span class="slider"></span>
                     </label>
-                    <span class="view-label" onclick="setDirection(true)">右起第1排</span>
+                    <span class="view-label" onclick="setDirection(true)">右起</span>
                     
                     <div style="width:1px; height:20px; background:#ccc; margin:0 10px;"></div>
 
-                    <span class="view-label" onclick="setView(false)">老師視角</span>
+                    <span class="view-label" onclick="setView(false)">老師</span>
                     <label class="switch">
                         <input type="checkbox" id="viewToggle">
                         <span class="slider"></span>
                     </label>
-                    <span class="view-label" onclick="setView(true)">學生視角</span>
+                    <span class="view-label" onclick="setView(true)">學生</span>
                 </div>
 
                 <div style="display:flex; gap:5px;">
+                    <button class="btn btn-red" id="dragLockBtn" onclick="toggleDragLock()">🔒 鎖定</button>
                     <button class="btn btn-sec" onclick="openModal()">📋 名單</button>
-                    <button class="btn btn-main" onclick="confirmReshuffle()">🔄 重排</button>
-                    <button class="btn btn-red" onclick="resetAll()">⚠ 重置</button>
+                    <button class="btn btn-main" onclick="openPasswordModal('shuffle')">🔄 重排</button>
                 </div>
             </div>
 
@@ -562,10 +568,29 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="passwordModal">
+        <div class="modal" style="width: 300px; text-align: center;">
+            <h3 id="pwdModalTitle">🔒 管理員確認</h3>
+            <p style="color:var(--c-grey); font-size:0.9rem; margin-bottom:15px;">請輸入密碼</p>
+            
+            <input type="password" id="adminPasswordInput" class="modal-input" placeholder="請輸入密碼" style="text-align:center; font-size:1.5rem; letter-spacing: 5px;">
+            
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn btn-sec" onclick="closePasswordModal()">取消</button>
+                <button class="btn btn-main" onclick="checkPassword()">確認</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- 設定與常數 ---
-        const SAVE_KEY = 'dashboard_v0114_2_layout';
-        const ADMIN_PASSWORD = "1234"; 
+        const SAVE_KEY = 'dashboard_v0115_2_layout';
+        const SHUFFLE_PASSWORD = "1013"; 
+        const DRAG_PASSWORD = "1013"; 
+        
+        // 狀態變數
+        let isDragLocked = true; // 預設鎖定
+        let passwordContext = ""; // 用來判斷密碼是用於重排還是解鎖 ('shuffle' | 'drag')
 
         function saveToLocal() {
             const subjects = [];
@@ -587,6 +612,7 @@
             const settings = {
                 isStudentView: document.getElementById('viewToggle').checked,
                 isRightStart: document.getElementById('dirToggle').checked
+                // 我們不儲存 isDragLocked，讓每次重新載入都回復鎖定狀態，比較安全
             };
 
             const gridLayout = getGridFromDOM().map(col => ({
@@ -614,7 +640,6 @@
                 try {
                     const data = JSON.parse(raw);
                     
-                    // 1. Restore Settings First (Critical for render logic)
                     let isRight = false;
                     let isStudent = false;
                     if (data.settings) {
@@ -629,7 +654,6 @@
                         }
                     }
 
-                    // 2. Restore Grid Layout with correct label logic
                     if (data.grid && Array.isArray(data.grid)) {
                         renderGridToDOM(data.grid, isRight); 
                         updateStudentsFromDOM();
@@ -640,7 +664,6 @@
                         generateSeatingInitial();
                     }
 
-                    // 3. Restore Subjects
                     if (data.subjects && Array.isArray(data.subjects)) {
                         const list = document.getElementById('subjectList');
                         const existing = list.querySelectorAll('.subject-item');
@@ -655,7 +678,6 @@
                         });
                     }
 
-                    // 4. Restore Attendance
                     if (data.attendance) {
                         const attInputs = document.querySelectorAll('.att-val');
                         if (attInputs[0]) attInputs[0].value = data.attendance.expected;
@@ -671,17 +693,16 @@
                 generateSeatingInitial();
             }
 
-            // Remove no-transition class after load to enable animations
+            updateDragLockUI(); // 初始化按鈕狀態
+
             setTimeout(() => {
                 document.body.classList.remove('no-transition');
             }, 100);
         }
 
         function resetAll() {
-            if (confirm("⚠ 確定要重置所有資料嗎？\n\n這將會清除所有科目、出席狀態、學生名單與座位排法，並將畫面恢復成預設值。\n此動作無法復原。")) {
-                localStorage.removeItem(SAVE_KEY);
-                location.reload();
-            }
+             // 這裡不需密碼，因為已經很危險了，老師應該不會亂按
+             // 若需要也可加上
         }
 
         let saveTimer = null;
@@ -692,6 +713,33 @@
 
         window.addEventListener('load', loadFromLocal);
         document.body.addEventListener('input', triggerSave);
+
+        // --- Lock Logic ---
+        function toggleDragLock() {
+            if (isDragLocked) {
+                // 如果目前是鎖定，想要解鎖 -> 跳密碼
+                openPasswordModal('drag');
+            } else {
+                // 如果目前是解鎖，想要鎖定 -> 直接鎖
+                isDragLocked = true;
+                updateDragLockUI();
+            }
+        }
+
+        function updateDragLockUI() {
+            const btn = document.getElementById('dragLockBtn');
+            const container = document.getElementById('seatingContainer');
+            
+            if (isDragLocked) {
+                btn.innerHTML = '🔒 鎖定';
+                btn.className = 'btn btn-red';
+                container.classList.add('locked'); // CSS會處理cursor和隱藏X
+            } else {
+                btn.innerHTML = '🔓 編輯中';
+                btn.className = 'btn btn-green';
+                container.classList.remove('locked');
+            }
+        }
 
         // --- Fullscreen ---
         function toggleFullscreen() {
@@ -762,13 +810,10 @@
         const viewToggle = document.getElementById('viewToggle');
         const dirToggle = document.getElementById('dirToggle');
         const seatingContainer = document.getElementById('seatingContainer');
-        const classroomLayout = document.getElementById('classroomLayout');
-
+        
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
-            
-            // Toggle direction as well to match user expectation (Teacher L-R vs Student R-L usually)
             dirToggle.checked = !dirToggle.checked;
             
             if (document.startViewTransition) {
@@ -820,7 +865,6 @@
 
         function rotateGrid180(grid) {
             if (!grid.length) return [];
-            // Deep copy and reverse both columns and rows
             const newGrid = grid.map(col => ({
                 ...col,
                 seats: [...col.seats].reverse()
@@ -833,8 +877,6 @@
             container.innerHTML = '';
             const totalCols = grid.length;
             
-            // If isRightStart is not passed (e.g. initial generation), check DOM. 
-            // But usually we pass it from load.
             if (isRightStart === null) {
                 isRightStart = document.getElementById('dirToggle').checked;
             }
@@ -857,8 +899,6 @@
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
                 
-                // --- 修正重點：直接在這裡計算正確的標籤，不要等渲染完再更新 ---
-                // 如果有儲存的標籤，優先使用；否則根據方向自動生成
                 if (colData.label && !colData.label.match(/^第\d+排$/)) {
                      inp.value = colData.label; 
                 } else {
@@ -873,7 +913,6 @@
 
         function triggerViewChangeLogic() {
             const isStudent = viewToggle.checked;
-            const currentGrid = getGridFromDOM();
             
             if (isStudent) {
                 seatingContainer.classList.add('student-view');
@@ -881,9 +920,8 @@
                 seatingContainer.classList.remove('student-view');
             }
             
+            const currentGrid = getGridFromDOM();
             const newGrid = rotateGrid180(currentGrid);
-            // Render without forcing label recalc immediately, let updateColumnLabels handle specific logic if needed
-            // But passing dirToggle state helps stability
             renderGridToDOM(newGrid, document.getElementById('dirToggle').checked);
         }
 
@@ -900,7 +938,6 @@
                 } else {
                     labelNum = index + 1;
                 }
-                // Only update if it looks like a standard label (preserve custom text)
                 if (inp.value.match(/^第\d+排$/)) {
                     inp.value = `第${labelNum}排`;
                 }
@@ -992,6 +1029,10 @@
         let dragItem=null, ghostItem=null, dragStartX=0, dragStartY=0;
         function enableDragAndDrop(seat) { seat.addEventListener('mousedown', handleDragStart); seat.addEventListener('touchstart', handleDragStart, {passive:false}); }
         function handleDragStart(e) {
+            // --- 鎖定檢查 ---
+            if (isDragLocked) return; 
+            // ----------------
+
             if(e.target.classList.contains('seat-close') || (e.type==='mousedown'&&e.button!==0)) return;
             if(this.classList.contains('empty')) return;
             
@@ -1148,6 +1189,7 @@
         let targetSeatElement = null; 
 
         function addNewStudent(el){
+            if (isDragLocked) return; // 鎖定狀態下不能新增
             targetSeatElement = el; 
             const modal = document.getElementById('singleStudentModal');
             document.getElementById('newStudentId').value = ''; 
@@ -1197,28 +1239,89 @@
             if (e.key === 'Enter') confirmAddStudent();
         });
 
+        // --- Password Modal Logic ---
+        function openPasswordModal(type) {
+            passwordContext = type;
+            const modal = document.getElementById('passwordModal');
+            const title = document.getElementById('pwdModalTitle');
+            const input = document.getElementById('adminPasswordInput');
+            
+            if (type === 'shuffle') {
+                title.innerText = '🔄 重排確認';
+            } else if (type === 'drag') {
+                title.innerText = '🔓 解鎖編輯';
+            }
+
+            input.value = '';
+            modal.style.display = 'flex';
+            
+            setTimeout(() => {
+                input.focus();
+            }, 300);
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+
+        function checkPassword() {
+            const input = document.getElementById('adminPasswordInput');
+            const pwd = input.value;
+            
+            if (passwordContext === 'shuffle') {
+                if (pwd === SHUFFLE_PASSWORD) {
+                    closePasswordModal();
+                    reshuffleSeating();
+                } else {
+                    alert("重排密碼錯誤！");
+                    input.value = '';
+                    input.focus();
+                }
+            } else if (passwordContext === 'drag') {
+                if (pwd === DRAG_PASSWORD) {
+                    isDragLocked = false;
+                    updateDragLockUI();
+                    closePasswordModal();
+                } else {
+                    alert("解鎖密碼錯誤！");
+                    input.value = '';
+                    input.focus();
+                }
+            }
+        }
+        
+        document.getElementById('adminPasswordInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const modal = document.getElementById('modal');
                 const singleModal = document.getElementById('singleStudentModal');
+                const passModal = document.getElementById('passwordModal');
+                
                 if (modal.style.display === 'flex') closeModal();
                 if (singleModal.style.display === 'flex') closeSingleStudentModal();
+                if (passModal.style.display === 'flex') closePasswordModal();
             }
         });
         
-        ['modal', 'singleStudentModal'].forEach(id => {
+        ['modal', 'singleStudentModal', 'passwordModal'].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
                 el.addEventListener('click', function(e) {
                     if (e.target === this) {
                         if(id === 'modal') closeModal();
-                        else closeSingleStudentModal();
+                        else if(id === 'singleStudentModal') closeSingleStudentModal();
+                        else closePasswordModal();
                     }
                 });
             }
         });
 
         window.deleteSeat = function(e, b) { 
+            // 鎖定狀態下不能刪除
+            if (isDragLocked) return; 
             e.stopPropagation(); 
             convertToEmpty(b.parentElement);
         }
@@ -1244,15 +1347,6 @@
         window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); triggerSave(); }
         window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); triggerSave(); }
         
-        function confirmReshuffle() {
-            const pwd = prompt("請輸入管理員密碼以進行隨機重排：");
-            if (pwd === ADMIN_PASSWORD) {
-                reshuffleSeating();
-            } else if (pwd !== null) {
-                alert("密碼錯誤，無法重排。");
-            }
-        }
-
         function reshuffleSeating(){
             const s=document.querySelectorAll('.seat-box:not(.empty)');
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
