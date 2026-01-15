@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ExamDashboard</title> <!--監考儀表板 v0113.2 (格局記憶)-->
+    <title>監考儀表板 v0114.2 (穩定版)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -30,6 +30,11 @@
         ::view-transition-new(root) {
             animation: none;
             mix-blend-mode: normal;
+        }
+        
+        /* 載入時禁止動畫，防止跳動 */
+        body.no-transition * {
+            view-transition-name: none !important;
         }
 
         .col-label-input, .podium { view-transition-name: none !important; }
@@ -313,6 +318,7 @@
         .btn:active { transform: translate(2px, 2px); box-shadow: none; }
         .btn-main { background: var(--c-grey); color: #fff; }
         .btn-sec { background: #fff; color: var(--c-grey); }
+        .btn-red { background: var(--c-red); color: #fff; border-color: var(--c-grey); }
         .btn-tiny { font-size: 0.8rem; padding: 4px 8px; background: #fff; opacity: 0.9; }
 
         .classroom-layout {
@@ -399,9 +405,9 @@
         .modal-input { margin-bottom: 15px; }
     </style>
 </head>
-<body>
+<body class="no-transition">
 
-    <div class="version-tag">v0113.2</div>
+    <div class="version-tag">v0114.2</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -512,7 +518,8 @@
 
                 <div style="display:flex; gap:5px;">
                     <button class="btn btn-sec" onclick="openModal()">📋 名單</button>
-                    <button class="btn btn-main" onclick="reshuffleSeating()">🔄 重排</button>
+                    <button class="btn btn-main" onclick="confirmReshuffle()">🔄 重排</button>
+                    <button class="btn btn-red" onclick="resetAll()">⚠ 重置</button>
                 </div>
             </div>
 
@@ -556,11 +563,11 @@
     </div>
 
     <script>
-        // --- 本地存儲設定 ---
-        const SAVE_KEY = 'dashboard_v0113_2_layout';
+        // --- 設定與常數 ---
+        const SAVE_KEY = 'dashboard_v0114_2_layout';
+        const ADMIN_PASSWORD = "1234"; 
 
         function saveToLocal() {
-            // 1. Subjects
             const subjects = [];
             document.querySelectorAll('.subject-item').forEach(item => {
                 subjects.push({
@@ -570,7 +577,6 @@
                 });
             });
 
-            // 2. Attendance
             const attInputs = document.querySelectorAll('.att-val');
             const attendance = {
                 expected: attInputs[0].value,
@@ -578,17 +584,15 @@
                 missing: attInputs[2].value
             };
 
-            // 3. View Settings
             const settings = {
                 isStudentView: document.getElementById('viewToggle').checked,
                 isRightStart: document.getElementById('dirToggle').checked
             };
 
-            // 4. Grid Layout (Capture explicit structure)
             const gridLayout = getGridFromDOM().map(col => ({
                 label: col.label,
                 seats: col.seats.map(seat => {
-                    if (!seat) return null; // Empty
+                    if (!seat) return null;
                     return { id: seat.id, name: seat.name };
                 })
             }));
@@ -610,21 +614,33 @@
                 try {
                     const data = JSON.parse(raw);
                     
-                    // 1. Restore Grid Layout (Prioritize explicit grid)
+                    // 1. Restore Settings First (Critical for render logic)
+                    let isRight = false;
+                    let isStudent = false;
+                    if (data.settings) {
+                        isStudent = data.settings.isStudentView;
+                        isRight = data.settings.isRightStart;
+                        
+                        document.getElementById('viewToggle').checked = isStudent;
+                        document.getElementById('dirToggle').checked = isRight;
+                        
+                        if(isStudent) {
+                            document.getElementById('seatingContainer').classList.add('student-view');
+                        }
+                    }
+
+                    // 2. Restore Grid Layout with correct label logic
                     if (data.grid && Array.isArray(data.grid)) {
-                        // Reconstruct grid structure exactly as saved
-                        // Note: View Toggle state will handle the rotation visual separately
-                        renderGridToDOM(data.grid);
-                        updateStudentsFromDOM(); // Sync global students variable
+                        renderGridToDOM(data.grid, isRight); 
+                        updateStudentsFromDOM();
                     } else if (data.students) {
-                        // Legacy support
                         students = data.students;
                         refillSeating(students);
                     } else {
                         generateSeatingInitial();
                     }
 
-                    // 2. Restore Subjects
+                    // 3. Restore Subjects
                     if (data.subjects && Array.isArray(data.subjects)) {
                         const list = document.getElementById('subjectList');
                         const existing = list.querySelectorAll('.subject-item');
@@ -639,7 +655,7 @@
                         });
                     }
 
-                    // 3. Restore Attendance
+                    // 4. Restore Attendance
                     if (data.attendance) {
                         const attInputs = document.querySelectorAll('.att-val');
                         if (attInputs[0]) attInputs[0].value = data.attendance.expected;
@@ -647,20 +663,6 @@
                         if (attInputs[2]) attInputs[2].value = data.attendance.missing;
                     }
 
-                    // 4. Restore Settings
-                    if (data.settings) {
-                        const vToggle = document.getElementById('viewToggle');
-                        const dToggle = document.getElementById('dirToggle');
-                        
-                        if (vToggle.checked !== data.settings.isStudentView) vToggle.checked = data.settings.isStudentView;
-                        if (dToggle.checked !== data.settings.isRightStart) dToggle.checked = data.settings.isRightStart;
-                        
-                        // Apply CSS class for view
-                        if(data.settings.isStudentView) {
-                            document.getElementById('seatingContainer').classList.add('student-view');
-                        }
-                        updateColumnLabels();
-                    }
                 } catch(e) {
                     console.error("Load error:", e);
                     generateSeatingInitial();
@@ -668,9 +670,20 @@
             } else {
                 generateSeatingInitial();
             }
+
+            // Remove no-transition class after load to enable animations
+            setTimeout(() => {
+                document.body.classList.remove('no-transition');
+            }, 100);
         }
 
-        // Auto-save trigger
+        function resetAll() {
+            if (confirm("⚠ 確定要重置所有資料嗎？\n\n這將會清除所有科目、出席狀態、學生名單與座位排法，並將畫面恢復成預設值。\n此動作無法復原。")) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+            }
+        }
+
         let saveTimer = null;
         function triggerSave() {
             if (saveTimer) clearTimeout(saveTimer);
@@ -754,6 +767,8 @@
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
+            
+            // Toggle direction as well to match user expectation (Teacher L-R vs Student R-L usually)
             dirToggle.checked = !dirToggle.checked;
             
             if (document.startViewTransition) {
@@ -788,7 +803,6 @@
 
         function getGridFromDOM() {
             const cols = Array.from(document.querySelectorAll('.seat-column'));
-            // Captures structured grid including explicit empty seats and labels
             return cols.map(colEl => {
                 const rowEls = Array.from(colEl.querySelectorAll('.seat-box'));
                 const labelVal = colEl.querySelector('.col-label-input').value;
@@ -806,7 +820,7 @@
 
         function rotateGrid180(grid) {
             if (!grid.length) return [];
-            // FIX: Deep copy to prevent data pollution
+            // Deep copy and reverse both columns and rows
             const newGrid = grid.map(col => ({
                 ...col,
                 seats: [...col.seats].reverse()
@@ -814,10 +828,17 @@
             return newGrid;
         }
 
-        function renderGridToDOM(grid) {
+        function renderGridToDOM(grid, isRightStart = null) {
             const container = document.getElementById('classroomLayout');
             container.innerHTML = '';
+            const totalCols = grid.length;
             
+            // If isRightStart is not passed (e.g. initial generation), check DOM. 
+            // But usually we pass it from load.
+            if (isRightStart === null) {
+                isRightStart = document.getElementById('dirToggle').checked;
+            }
+
             grid.forEach((colData, idx) => {
                 const div = document.createElement('div');
                 div.className = 'seat-column';
@@ -835,8 +856,16 @@
                 
                 const inp = document.createElement('input'); 
                 inp.className = 'col-label-input'; 
-                // Restore label if saved
-                if (colData.label) inp.value = colData.label; 
+                
+                // --- 修正重點：直接在這裡計算正確的標籤，不要等渲染完再更新 ---
+                // 如果有儲存的標籤，優先使用；否則根據方向自動生成
+                if (colData.label && !colData.label.match(/^第\d+排$/)) {
+                     inp.value = colData.label; 
+                } else {
+                     let labelNum = isRightStart ? (totalCols - idx) : (idx + 1);
+                     inp.value = `第${labelNum}排`;
+                }
+
                 div.appendChild(inp);
                 container.appendChild(div);
             });
@@ -844,7 +873,6 @@
 
         function triggerViewChangeLogic() {
             const isStudent = viewToggle.checked;
-            // Get current displayed grid
             const currentGrid = getGridFromDOM();
             
             if (isStudent) {
@@ -854,8 +882,9 @@
             }
             
             const newGrid = rotateGrid180(currentGrid);
-            renderGridToDOM(newGrid);
-            updateColumnLabels(); 
+            // Render without forcing label recalc immediately, let updateColumnLabels handle specific logic if needed
+            // But passing dirToggle state helps stability
+            renderGridToDOM(newGrid, document.getElementById('dirToggle').checked);
         }
 
         function updateColumnLabels() {
@@ -865,15 +894,16 @@
 
             cols.forEach((col, index) => {
                 const inp = col.querySelector('.col-label-input');
-                // Only auto-update if it looks like default (to allow custom labels)
-                // For simplicity in this version, we enforce auto-labels on toggle change
                 let labelNum;
                 if (isRightStart) {
                     labelNum = total - index;
                 } else {
                     labelNum = index + 1;
                 }
-                inp.value = `第${labelNum}排`;
+                // Only update if it looks like a standard label (preserve custom text)
+                if (inp.value.match(/^第\d+排$/)) {
+                    inp.value = `第${labelNum}排`;
+                }
             });
         }
 
@@ -1214,6 +1244,15 @@
         window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); triggerSave(); }
         window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); triggerSave(); }
         
+        function confirmReshuffle() {
+            const pwd = prompt("請輸入管理員密碼以進行隨機重排：");
+            if (pwd === ADMIN_PASSWORD) {
+                reshuffleSeating();
+            } else if (pwd !== null) {
+                alert("密碼錯誤，無法重排。");
+            }
+        }
+
         function reshuffleSeating(){
             const s=document.querySelectorAll('.seat-box:not(.empty)');
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
@@ -1243,27 +1282,15 @@
         }
 
         function refillSeating(arr){
-            // 重抓 cols 確保 reference 正確
             let cols=document.querySelectorAll('.seat-column');
-            
             if(!cols.length){ students=arr; generateSeatingInitial(); return; }
-            
             let pool=[...arr];
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-            
-            let total=0; 
-            cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
-            
-            while(total<pool.length){ 
-                addColumn(); 
-                cols=document.querySelectorAll('.seat-column'); 
-                total=0; 
-                cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); 
-            }
+            let total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length);
+            while(total<pool.length){ addColumn(); cols=document.querySelectorAll('.seat-column'); total=0; cols.forEach(c=>total+=c.querySelectorAll('.seat-box').length); }
             
             const doRefill = () => {
                 let idx=0;
-                // 在執行當下重新獲取 DOM
                 const currentCols = document.querySelectorAll('.seat-column');
                 currentCols.forEach(c=>{ c.querySelectorAll('.seat-box').forEach(s=>{
                     if(idx<pool.length){ 
@@ -1294,6 +1321,7 @@
             let pool=[...students];
             for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
             let idx=0;
+            const isRight = document.getElementById('dirToggle').checked;
             for(let i=0;i<7;i++){
                 const col=document.createElement('div'); col.className='seat-column';
                 for(let r=0;r<6;r++){
@@ -1305,10 +1333,13 @@
                     else { const s=createSeat('',''); convertToEmpty(s); col.appendChild(s); }
                 }
                 const inp=document.createElement('input'); inp.className='col-label-input';
+                // Initial generation label logic
+                let labelNum = isRight ? (7 - i) : (i + 1);
+                inp.value = `第${labelNum}排`;
+                
                 col.appendChild(inp);
                 c.appendChild(col);
             }
-            updateColumnLabels();
         }
         
         function openModal(){ 
@@ -1346,8 +1377,6 @@
 
         setInterval(updateClock, 1000);
         updateClock();
-        // 初始化載入交由 loadFromLocal 處理，避免覆蓋
-        // generateSeatingInitial(); 
     </script>
 </body>
 </html>
