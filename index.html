@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>監考儀表板 v0115.3 (重置回歸版)</title>
+    <title>ExamDashboard</title> <!--監考儀表板 v0115.4 (單一鎖定版)-->
     
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
 
     <style>
         :root {
@@ -322,6 +322,15 @@
         .btn-green { background: var(--c-green); color: #fff; border-color: var(--c-grey); }
         .btn-tiny { font-size: 0.8rem; padding: 4px 8px; background: #fff; opacity: 0.9; }
 
+        /* DISABLED BUTTON STATE */
+        .btn.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(1);
+            background: #e0e0e0; color: #999; border-color: #ccc;
+            box-shadow: none;
+        }
+
         .classroom-layout {
             flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; 
             justify-content: center; align-items: stretch; gap: 4px; padding-bottom: 5px;
@@ -356,6 +365,8 @@
         .seating-container.locked .seat-box { cursor: default; }
         .seating-container.locked .seat-close { display: none !important; }
         .seating-container.locked .seat-box:active { cursor: default; transform: none; }
+        .seating-container.locked .seat-box.empty { cursor: default; opacity: 0.5; border-style: dotted; }
+        .seating-container.locked .seat-box.empty:hover { background: rgba(255,255,255,0.4); }
 
         .seat-box:active { cursor: grabbing; transform: scale(0.98); }
         .seat-ghost { position: fixed; z-index: 9999; pointer-events: none; opacity: 0.8; box-shadow: 4px 4px 10px rgba(0,0,0,0.2); transform: scale(1.05) rotate(2deg); background: #fff; border: 2px solid var(--c-teal); }
@@ -379,8 +390,7 @@
 
         .podium {
             width: 180px; height: 35px; border: 3px solid var(--c-grey); 
-            background: var(--c-grey); color: #fff;
-            display: flex; align-items: center; justify-content: center;
+            background: var(--c-grey); color: #fff; display: flex; align-items: center; justify-content: center;
             font-weight: 900; letter-spacing: 5px; pointer-events: none;
             box-shadow: 4px 4px 0px rgba(0,0,0,0.1); border-radius: 8px;
             margin: 5px 0; align-self: center; order: 2; z-index: 10; font-size: 0.9rem;
@@ -413,7 +423,7 @@
 </head>
 <body class="no-transition">
 
-    <div class="version-tag">v0115.3</div>
+    <div class="version-tag">v0115.4</div>
 
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
@@ -497,11 +507,11 @@
 
         <div class="seating-container locked" id="seatingContainer">
             <div class="seating-toolbar">
-                <div style="display:flex; gap:5px;">
-                    <button class="btn btn-tiny" onclick="addColumn()">+ 增排</button>
-                    <button class="btn btn-tiny" onclick="removeColumn()">- 刪排</button>
-                    <button class="btn btn-tiny" onclick="addRow()">+ 增列</button>
-                    <button class="btn btn-tiny" onclick="removeRow()">- 刪列</button>
+                <div style="display:flex; gap:5px;" id="gridControls">
+                    <button class="btn btn-tiny disabled" onclick="addColumn()">+ 增排</button>
+                    <button class="btn btn-tiny disabled" onclick="removeColumn()">- 刪排</button>
+                    <button class="btn btn-tiny disabled" onclick="addRow()">+ 增列</button>
+                    <button class="btn btn-tiny disabled" onclick="removeRow()">- 刪列</button>
                 </div>
                 
                 <div class="view-control-group">
@@ -523,10 +533,10 @@
                 </div>
 
                 <div style="display:flex; gap:5px;">
-                    <button class="btn btn-red" id="dragLockBtn" onclick="toggleDragLock()">🔒 鎖定</button>
-                    <button class="btn btn-sec" onclick="openModal()">📋 名單</button>
-                    <button class="btn btn-main" onclick="openPasswordModal('shuffle')">🔄 重排</button>
-                    <button class="btn btn-red" onclick="openPasswordModal('reset')">⚠️ 重置</button>
+                    <button class="btn btn-red" id="masterLockBtn" onclick="toggleEditMode()">🔒 鎖定</button>
+                    <button class="btn btn-sec disabled" id="btnList" onclick="openModal()">📋 名單</button>
+                    <button class="btn btn-main disabled" id="btnShuffle" onclick="reshuffleSeating()">🔄 重排</button>
+                    <button class="btn btn-red disabled" id="btnReset" onclick="performReset()">⚠️ 重置</button>
                 </div>
             </div>
 
@@ -572,7 +582,7 @@
     <div class="modal-overlay" id="passwordModal">
         <div class="modal" style="width: 300px; text-align: center;">
             <h3 id="pwdModalTitle">🔒 管理員確認</h3>
-            <p style="color:var(--c-grey); font-size:0.9rem; margin-bottom:15px;">請輸入密碼</p>
+            <p style="color:var(--c-grey); font-size:0.9rem; margin-bottom:15px;">請輸入密碼以解鎖編輯</p>
             
             <input type="password" id="adminPasswordInput" class="modal-input" placeholder="請輸入密碼" style="text-align:center; font-size:1.5rem; letter-spacing: 5px;">
             
@@ -585,14 +595,10 @@
 
     <script>
         // --- 設定與常數 ---
-        const SAVE_KEY = 'dashboard_v0115_3_layout';
-        const SHUFFLE_PASSWORD = "1013"; 
-        const DRAG_PASSWORD = "1013"; 
-        const RESET_PASSWORD = "1013"; 
+        const SAVE_KEY = 'dashboard_v0115_4_layout';
+        const MASTER_PASSWORD = "1013"; 
         
-        // 狀態變數
-        let isDragLocked = true; 
-        let passwordContext = ""; // 'shuffle' | 'drag' | 'reset'
+        let isLocked = true; 
 
         function saveToLocal() {
             const subjects = [];
@@ -694,7 +700,7 @@
                 generateSeatingInitial();
             }
 
-            updateDragLockUI(); 
+            updateLockUI(); 
 
             setTimeout(() => {
                 document.body.classList.remove('no-transition');
@@ -711,27 +717,132 @@
         document.body.addEventListener('input', triggerSave);
 
         // --- Lock Logic ---
-        function toggleDragLock() {
-            if (isDragLocked) {
-                openPasswordModal('drag');
+        function toggleEditMode() {
+            if (isLocked) {
+                openPasswordModal();
             } else {
-                isDragLocked = true;
-                updateDragLockUI();
+                isLocked = true;
+                updateLockUI();
             }
         }
 
-        function updateDragLockUI() {
-            const btn = document.getElementById('dragLockBtn');
+        function checkPassword() {
+            const input = document.getElementById('adminPasswordInput');
+            if (input.value === MASTER_PASSWORD) {
+                isLocked = false;
+                updateLockUI();
+                closePasswordModal();
+            } else {
+                alert("密碼錯誤！");
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function updateLockUI() {
+            const btn = document.getElementById('masterLockBtn');
             const container = document.getElementById('seatingContainer');
             
-            if (isDragLocked) {
+            // 這些按鈕在鎖定時會被禁用
+            const controlledBtns = [
+                document.getElementById('btnShuffle'),
+                document.getElementById('btnReset'),
+                document.getElementById('btnList'),
+                ...document.getElementById('gridControls').querySelectorAll('button')
+            ];
+
+            if (isLocked) {
                 btn.innerHTML = '🔒 鎖定';
                 btn.className = 'btn btn-red';
-                container.classList.add('locked');
+                container.classList.add('locked'); // CSS處理拖曳鎖定
+                controlledBtns.forEach(b => b.classList.add('disabled'));
             } else {
                 btn.innerHTML = '🔓 編輯中';
                 btn.className = 'btn btn-green';
                 container.classList.remove('locked');
+                controlledBtns.forEach(b => b.classList.remove('disabled'));
+            }
+        }
+
+        function openPasswordModal() {
+            const modal = document.getElementById('passwordModal');
+            const input = document.getElementById('adminPasswordInput');
+            input.value = '';
+            modal.style.display = 'flex';
+            
+            setTimeout(() => {
+                input.focus();
+            }, 300);
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+        
+        document.getElementById('adminPasswordInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('modal');
+                const singleModal = document.getElementById('singleStudentModal');
+                const passModal = document.getElementById('passwordModal');
+                
+                if (modal.style.display === 'flex') closeModal();
+                if (singleModal.style.display === 'flex') closeSingleStudentModal();
+                if (passModal.style.display === 'flex') closePasswordModal();
+            }
+        });
+        
+        ['modal', 'singleStudentModal', 'passwordModal'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        if(id === 'modal') closeModal();
+                        else if(id === 'singleStudentModal') closeSingleStudentModal();
+                        else closePasswordModal();
+                    }
+                });
+            }
+        });
+
+        // --- Core Functions ---
+        function reshuffleSeating(){
+            if (isLocked) return;
+            const s=document.querySelectorAll('.seat-box:not(.empty)');
+            let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
+            if(!pool.length)return;
+            for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+            
+            const doShuffle = () => {
+                s.forEach((x,i)=>{ 
+                    x.innerHTML=`<div class="seat-close" onclick="deleteSeat(event,this)">×</div><div class="seat-num">${pool[i].id}</div><div class="seat-name">${pool[i].name}</div>`;
+                    
+                    if (pool[i].id) {
+                        x.style.viewTransitionName = 'seat-' + pool[i].id;
+                    } else {
+                        const safeName = btoa(encodeURIComponent(pool[i].name)).replace(/[^a-zA-Z0-9]/g, '');
+                        x.style.viewTransitionName = 'seat-name-' + safeName + '-' + Math.floor(Math.random()*10000);
+                    }
+                });
+                students=pool;
+            };
+
+            if (document.startViewTransition) {
+                document.startViewTransition(doShuffle);
+            } else {
+                doShuffle();
+            }
+            triggerSave();
+        }
+
+        function performReset() {
+            if (isLocked) return;
+            if (confirm("⚠ 確定要重置所有資料嗎？\n\n這將會清除所有科目、出席狀態、學生名單與座位排法，並將畫面恢復成預設值。\n此動作無法復原。")) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
             }
         }
 
@@ -804,7 +915,8 @@
         const viewToggle = document.getElementById('viewToggle');
         const dirToggle = document.getElementById('dirToggle');
         const seatingContainer = document.getElementById('seatingContainer');
-        
+        const classroomLayout = document.getElementById('classroomLayout');
+
         function setView(isStudent) {
             if (viewToggle.checked === isStudent) return;
             viewToggle.checked = isStudent;
@@ -1023,7 +1135,7 @@
         let dragItem=null, ghostItem=null, dragStartX=0, dragStartY=0;
         function enableDragAndDrop(seat) { seat.addEventListener('mousedown', handleDragStart); seat.addEventListener('touchstart', handleDragStart, {passive:false}); }
         function handleDragStart(e) {
-            if (isDragLocked) return; 
+            if (isLocked) return; 
 
             if(e.target.classList.contains('seat-close') || (e.type==='mousedown'&&e.button!==0)) return;
             if(this.classList.contains('empty')) return;
@@ -1136,6 +1248,7 @@
         function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 
         function addSubject(){
+            if(isLocked) return;
             const d=document.createElement('div'); 
             d.className='subject-item';
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
@@ -1151,6 +1264,7 @@
             triggerSave();
         }
         function removeSubject(b){ 
+            if(isLocked) return;
             b.closest('.subject-item').remove(); 
             triggerSave();
         }
@@ -1181,7 +1295,7 @@
         let targetSeatElement = null; 
 
         function addNewStudent(el){
-            if (isDragLocked) return; 
+            if (isLocked) return; 
             targetSeatElement = el; 
             const modal = document.getElementById('singleStudentModal');
             document.getElementById('newStudentId').value = ''; 
@@ -1231,100 +1345,8 @@
             if (e.key === 'Enter') confirmAddStudent();
         });
 
-        // --- Password Modal Logic ---
-        function openPasswordModal(type) {
-            passwordContext = type;
-            const modal = document.getElementById('passwordModal');
-            const title = document.getElementById('pwdModalTitle');
-            const input = document.getElementById('adminPasswordInput');
-            
-            if (type === 'shuffle') {
-                title.innerText = '🔄 重排確認';
-            } else if (type === 'drag') {
-                title.innerText = '🔓 解鎖編輯';
-            } else if (type === 'reset') {
-                title.innerText = '⚠️ 重置確認';
-            }
-
-            input.value = '';
-            modal.style.display = 'flex';
-            
-            setTimeout(() => {
-                input.focus();
-            }, 300);
-        }
-
-        function closePasswordModal() {
-            document.getElementById('passwordModal').style.display = 'none';
-        }
-
-        function checkPassword() {
-            const input = document.getElementById('adminPasswordInput');
-            const pwd = input.value;
-            
-            if (passwordContext === 'shuffle') {
-                if (pwd === SHUFFLE_PASSWORD) {
-                    closePasswordModal();
-                    reshuffleSeating();
-                } else {
-                    alert("密碼錯誤！"); input.value = ''; input.focus();
-                }
-            } else if (passwordContext === 'drag') {
-                if (pwd === DRAG_PASSWORD) {
-                    isDragLocked = false;
-                    updateDragLockUI();
-                    closePasswordModal();
-                } else {
-                    alert("密碼錯誤！"); input.value = ''; input.focus();
-                }
-            } else if (passwordContext === 'reset') {
-                if (pwd === RESET_PASSWORD) {
-                    closePasswordModal();
-                    performReset();
-                } else {
-                    alert("密碼錯誤！"); input.value = ''; input.focus();
-                }
-            }
-        }
-        
-        function performReset() {
-            if(confirm("確定要清空所有資料並還原預設值嗎？\n此動作無法復原！")) {
-                localStorage.removeItem(SAVE_KEY);
-                location.reload();
-            }
-        }
-        
-        document.getElementById('adminPasswordInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') checkPassword();
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const modal = document.getElementById('modal');
-                const singleModal = document.getElementById('singleStudentModal');
-                const passModal = document.getElementById('passwordModal');
-                
-                if (modal.style.display === 'flex') closeModal();
-                if (singleModal.style.display === 'flex') closeSingleStudentModal();
-                if (passModal.style.display === 'flex') closePasswordModal();
-            }
-        });
-        
-        ['modal', 'singleStudentModal', 'passwordModal'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) {
-                el.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        if(id === 'modal') closeModal();
-                        else if(id === 'singleStudentModal') closeSingleStudentModal();
-                        else closePasswordModal();
-                    }
-                });
-            }
-        });
-
         window.deleteSeat = function(e, b) { 
-            if (isDragLocked) return; 
+            if (isLocked) return; 
             e.stopPropagation(); 
             convertToEmpty(b.parentElement);
         }
@@ -1336,6 +1358,7 @@
             if(tmp.length) students=tmp;
         }
         window.addColumn=function(){
+            if(isLocked) return;
             const c=document.getElementById('classroomLayout'), cols=document.querySelectorAll('.seat-column');
             let max=6; cols.forEach(x=>max=Math.max(max, x.querySelectorAll('.seat-box').length));
             const div=document.createElement('div'); div.className='seat-column';
@@ -1346,11 +1369,12 @@
             updateColumnLabels();
             triggerSave();
         }
-        window.removeColumn=function(){ const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels(); triggerSave();} }
-        window.addRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); triggerSave(); }
-        window.removeRow=function(){ document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); triggerSave(); }
+        window.removeColumn=function(){ if(isLocked) return; const c=document.getElementById('classroomLayout'); if(c.children.length) {c.lastElementChild.remove(); updateStudentsFromDOM(); updateColumnLabels(); triggerSave();} }
+        window.addRow=function(){ if(isLocked) return; document.querySelectorAll('.seat-column').forEach(c=>{ const s=createSeat('',''); convertToEmpty(s); c.insertBefore(s, c.querySelector('.col-label-input')); }); triggerSave(); }
+        window.removeRow=function(){ if(isLocked) return; document.querySelectorAll('.seat-column').forEach(c=>{ const s=c.querySelectorAll('.seat-box'); if(s.length) {s[s.length-1].remove(); updateStudentsFromDOM();} }); triggerSave(); }
         
         function reshuffleSeating(){
+            if (isLocked) return;
             const s=document.querySelectorAll('.seat-box:not(.empty)');
             let pool=[]; s.forEach(x=>pool.push({id:x.querySelector('.seat-num').innerText,name:x.querySelector('.seat-name').innerText}));
             if(!pool.length)return;
