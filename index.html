@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ExamDashboard</title> <!--監考儀表板 v0115.4 (單一鎖定版)-->
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+
+    <title>ExamDashboard</title> <!--監考儀表板 v0115.8-->
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -60,7 +65,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-body);
             margin: 0; 
-            padding: 10px 15px calc(15px + env(safe-area-inset-bottom)) 15px;
+            /* 針對 iPad 加入主畫面後的的安全區域設定 */
+            padding: calc(10px + env(safe-area-inset-top)) 15px calc(15px + env(safe-area-inset-bottom)) 15px;
             height: 100vh;
             height: 100dvh; 
             display: flex; flex-direction: column;
@@ -68,17 +74,18 @@
             position: fixed; width: 100%;
         }
 
+        /* 全螢幕樣式調整 */
         body:fullscreen, body:-webkit-full-screen {
-            padding: 0; 
             background-color: var(--c-grey);
+            padding-top: 20px; /* 增加頂部留白 */
         }
+
         body:fullscreen .clock-card,
         body:fullscreen .status-card,
         body:fullscreen .schedule-column .subject-list,
         body:fullscreen .attendance-card,
         body:fullscreen .seating-container {
-            border-radius: 0; 
-            border-width: 0 1px 1px 0; 
+            border-radius: 8px;
         }
 
         #fullscreenBtn {
@@ -92,12 +99,9 @@
         body:fullscreen #fullscreenBtn { opacity: 0.3; }
         body:fullscreen #fullscreenBtn:hover { opacity: 1; }
 
-        .version-tag {
-            position: fixed; top: 12px; left: 15px; z-index: 3000;
-            color: var(--c-grey); font-weight: 900; font-size: 0.9rem;
-            opacity: 0.4; pointer-events: none;
-            font-family: 'Courier New', monospace;
-            display: none;
+        /* 如果是 iOS 裝置，透過 JS 加入此 class 來隱藏按鈕 */
+        body.is-ios #fullscreenBtn {
+            display: none !important;
         }
 
         /* --- Resizer --- */
@@ -423,8 +427,6 @@
 </head>
 <body class="no-transition">
 
-    <div class="version-tag">v0115.4</div>
-
     <button id="fullscreenBtn" onclick="toggleFullscreen()">
         <span style="font-size:1.2rem">⛶</span> 全螢幕
     </button>
@@ -595,10 +597,18 @@
 
     <script>
         // --- 設定與常數 ---
-        const SAVE_KEY = 'dashboard_v0115_4_layout';
+        const SAVE_KEY = 'dashboard_v0115_8_layout'; // 更新 Key 避免快取舊設定
         const MASTER_PASSWORD = "1013"; 
         
         let isLocked = true; 
+
+        // 偵測 iOS 裝置 (iPad/iPhone)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        if (isIOS) {
+            document.body.classList.add('is-ios');
+        }
 
         function saveToLocal() {
             const subjects = [];
@@ -719,8 +729,10 @@
         // --- Lock Logic ---
         function toggleEditMode() {
             if (isLocked) {
+                // 如果目前是鎖定，開啟密碼視窗
                 openPasswordModal();
             } else {
+                // 如果目前是解鎖，直接上鎖
                 isLocked = true;
                 updateLockUI();
             }
@@ -754,7 +766,7 @@
             if (isLocked) {
                 btn.innerHTML = '🔒 鎖定';
                 btn.className = 'btn btn-red';
-                container.classList.add('locked'); // CSS處理拖曳鎖定
+                container.classList.add('locked'); // CSS處理拖曳鎖定與隱藏刪除鈕
                 controlledBtns.forEach(b => b.classList.add('disabled'));
             } else {
                 btn.innerHTML = '🔓 編輯中';
@@ -1248,7 +1260,7 @@
         function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
 
         function addSubject(){
-            if(isLocked) return;
+            // 無論是否鎖定，現在都允許新增
             const d=document.createElement('div'); 
             d.className='subject-item';
             d.innerHTML=`<div class="subject-header"><input type="text" class="subject-input" value="新科目" onfocus="handleFocus(this)"><button class="btn-delete" onclick="removeSubject(this)">×</button></div><div class="time-inputs"><input type="text" class="time-input time-start" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"><span class="time-sep">~</span><input type="text" class="time-input time-end" placeholder="HH:mm" maxlength="5" onfocus="handleFocus(this)" onblur="formatTimeInput(this)"></div>`;
@@ -1264,7 +1276,7 @@
             triggerSave();
         }
         function removeSubject(b){ 
-            if(isLocked) return;
+            if(isLocked) return; // 刪除依然需要解鎖，避免誤觸
             b.closest('.subject-item').remove(); 
             triggerSave();
         }
