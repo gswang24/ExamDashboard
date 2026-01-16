@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
 
-    <title>ExamDashboard</title> <!--監考儀表板 v0115.8-->
+    <title>ExamDashboard</title> <!--監考儀表板 v0115.9-->
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
 
@@ -94,15 +94,12 @@
             border: none; border-radius: 6px; padding: 6px 10px;
             cursor: pointer; font-weight: bold; font-size: 0.8rem;
             transition: 0.2s; backdrop-filter: blur(2px);
+            /* 確保在所有裝置都顯示 */
+            display: block;
         }
         #fullscreenBtn:hover { transform: scale(1.05); background-color: #000; }
         body:fullscreen #fullscreenBtn { opacity: 0.3; }
         body:fullscreen #fullscreenBtn:hover { opacity: 1; }
-
-        /* 如果是 iOS 裝置，透過 JS 加入此 class 來隱藏按鈕 */
-        body.is-ios #fullscreenBtn {
-            display: none !important;
-        }
 
         /* --- Resizer --- */
         .resizer { 
@@ -597,7 +594,7 @@
 
     <script>
         // --- 設定與常數 ---
-        const SAVE_KEY = 'dashboard_v0115_8_layout'; // 更新 Key 避免快取舊設定
+        const SAVE_KEY = 'dashboard_v0115_9_layout'; // 更新 Key 避免快取舊設定
         const MASTER_PASSWORD = "1013"; 
         
         let isLocked = true; 
